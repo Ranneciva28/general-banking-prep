@@ -1,38 +1,45 @@
-# General Banking Prep — Day 1
+# General Banking Prep — V3 Hard Edition
 
-Static quiz web app untuk persiapan **General Banking Program — Day 1**. Versi ini didesain ulang dengan UX dashboard modern dan tetap bisa di-host gratis melalui GitHub Pages.
+Static quiz web app untuk persiapan **General Banking Program Day 1–5**. Dibuat untuk GitHub Pages tanpa backend, npm, atau build step.
+
+## Isi V3
+
+- **5 hari** pembelajaran General Banking
+- **24 modul**
+- **432 soal** total, masing-masing modul 18 soal
+- 72 soal berlabel **Expert** + bank soal Sulit/Challenge
+- Day 1 direwrite agar distractor lebih masuk akal dan tidak mudah ditebak dari pola bahasa
+- Opsi jawaban diaudit agar posisi A/B/C/D tersebar dan panjang jawaban benar tidak menjadi shortcut
+- Quick Drill & Exam Simulation menggunakan **hard-biased sampling**: porsi Expert + Challenge lebih tinggi
+- Pembahasan + sumber modul/halaman pada setiap soal
+
+### Pembagian bank soal
+
+- Day 1: 108 soal — Fundamental General Banking
+- Day 2: 90 soal — Customer Service & Operational Transaction
+- Day 3: 90 soal — Administration, FX, Trade & Accounting
+- Day 4: 108 soal — Risk, Fraud, BCM/K3, PDP, KYC & Legal
+- Day 5: 36 soal — Three Lines of Defense & APU/PPT/PPSPM
 
 ## Fitur
 
-- 6 modul Day 1 dan 72 soal awal
-- Dashboard progress, streak, statistik, weakest module
-- Practice Mode: feedback + pembahasan langsung
-- Exam Mode: feedback ditahan sampai sesi selesai
-- Quick Drill 10 soal
-- Weakness Drill dari soal yang pernah salah
-- Pilihan 10 / 25 / 50 / seluruh soal
+- Dashboard 5-Day dengan tab per hari
+- Practice Mode dan Exam Mode
+- Hard-biased Quick Drill 10 soal
+- Weakness Drill berdasarkan soal yang pernah salah
+- Pilihan jumlah 10 / 25 / 50 / seluruh soal
 - Randomisasi soal dan pilihan jawaban
-- Navigator soal + tandai soal
-- Bookmark dan catatan per soal
-- Review jawaban sesi terakhir
-- Statistik akurasi per modul dan riwayat sesi
+- Navigator soal, tandai soal, bookmark, dan catatan
+- Review jawaban + pembahasan
+- Statistik per modul dan riwayat sesi
+- Search
 - Light / Dark mode
-- Pencarian modul / soal
-- Data tersimpan otomatis di `localStorage`
-- Responsive untuk desktop, tablet, dan mobile
+- Progress disimpan di `localStorage`
+- Responsive desktop/tablet/mobile
 
-## Deploy ke GitHub Pages
+## Update website GitHub Pages yang sudah live
 
-1. Buat repository GitHub baru, misalnya `general-banking-prep`.
-2. Upload **seluruh isi folder ini** ke root repository.
-3. Masuk ke **Settings → Pages**.
-4. Pada **Build and deployment**, pilih **Deploy from a branch**.
-5. Pilih branch `main`, folder `/ (root)`, lalu **Save**.
-6. Tunggu GitHub Pages menerbitkan URL website.
-
-Tidak butuh backend, database, npm, ataupun build command.
-
-## Struktur
+Replace isi repository dengan file/folder dari paket V3 ini, lalu commit ke branch yang dipakai GitHub Pages:
 
 ```text
 index.html
@@ -42,16 +49,16 @@ js/app.js
 README.md
 ```
 
-## Menjalankan lokal
+GitHub Pages akan melakukan deploy ulang setelah commit.
 
-Bisa langsung buka `index.html`, atau jalankan local server:
+## Struktur
 
-```bash
-python -m http.server 8000
+```text
+index.html
+css/
+  style.css
+js/
+  app.js
+  questions.js
+README.md
 ```
-
-Lalu buka `http://localhost:8000`.
-
-## Menambah soal
-
-Tambahkan objek baru pada `js/questions.js` dengan struktur yang sama. Engine quiz akan otomatis membaca modul dan jumlah soal.

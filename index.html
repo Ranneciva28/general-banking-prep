@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#2454e6" />
-  <meta name="description" content="General Banking Prep — quiz trainer Day 1 untuk persiapan General Banking Program." />
-  <title>General Banking Prep — Day 1</title>
+  <meta name="description" content="General Banking Prep — quiz trainer 5-Day untuk persiapan General Banking Program." />
+  <title>General Banking Prep V3 — 5-Day Hard Edition</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -29,10 +29,10 @@
 
       <div class="sidebar-spacer"></div>
       <div class="sidebar-study-card">
-        <div class="mini-badge">DAY 1</div>
-        <strong>6 Modul General Banking</strong>
-        <p><span id="sideQuestionCount">72</span> soal siap dilatih. Progress tersimpan otomatis.</p>
-        <button class="sidebar-cta" id="sideQuickBtn">Mulai Quick Drill</button>
+        <div class="mini-badge">5-DAY CHALLENGE</div>
+        <strong>24 Modul · V3 Hard Edition</strong>
+        <p><span id="sideQuestionCount">432</span> soal menantang. Progress tersimpan otomatis.</p>
+        <button class="sidebar-cta" id="sideQuickBtn">Mulai Hard Drill</button>
       </div>
       <div class="sidebar-help"><span class="help-dot">?</span><div><strong>Tips</strong><small>Latih titik lemah setelah sesi.</small></div></div>
     </aside>
@@ -49,7 +49,7 @@
         <div class="top-actions">
           <div class="streak-pill" title="Hari belajar beruntun"><span>🔥</span><strong id="streakCount">1</strong><small>Hari Beruntun</small></div>
           <button class="icon-btn" id="themeToggle" aria-label="Ubah tema">☾</button>
-          <div class="profile-chip"><div class="avatar">GB</div><div class="profile-copy"><strong>General Banking</strong><small>Day 1 Prep</small></div></div>
+          <div class="profile-chip"><div class="avatar">GB</div><div class="profile-copy"><strong>General Banking</strong><small>5-Day Prep</small></div></div>
         </div>
       </header>
 
@@ -59,8 +59,8 @@
           <section class="hero-card">
             <div class="hero-copy">
               <span class="hero-kicker">5-Day General Banking Preparation</span>
-              <h1>General Banking Day 1</h1>
-              <p>Bangun fondasi perbankan dari 6 modul. Latihan adaptif, review jawaban, dan fokus otomatis ke materi yang paling sering salah.</p>
+              <h1 id="heroTitle">General Banking · Day 1</h1>
+              <p id="heroDescription">Latihan berbasis kasus dengan distraktor yang sengaja dibuat rapat. Fokusnya memahami konsep, bukan menebak pola jawaban.</p>
               <div class="hero-actions">
                 <button class="btn btn-white" id="continueLearningBtn">▶ Lanjutkan Belajar</button>
                 <button class="btn btn-glass" id="heroExamBtn">Simulasi Ujian</button>
@@ -75,14 +75,15 @@
               </div>
               <div class="hero-metrics">
                 <div class="hero-metric"><span class="metric-icon green">↗</span><div><strong id="heroStreak">1</strong><small>Hari Beruntun</small></div></div>
-                <div class="hero-metric"><span class="metric-icon blue">▤</span><div><strong id="heroTotalQuestions">72</strong><small>Total Soal</small></div></div>
+                <div class="hero-metric"><span class="metric-icon blue">▤</span><div><strong id="heroTotalQuestions">432</strong><small>Total Soal</small></div></div>
                 <div class="hero-metric"><span class="metric-icon purple">◎</span><div><strong id="heroAnswered">0</strong><small>Soal Dikerjakan</small></div></div>
               </div>
             </div>
           </section>
 
           <section class="section-block">
-            <div class="section-title-row"><div><h2>6 Modul Pembelajaran</h2><p>Pilih modul untuk latihan yang lebih terarah.</p></div><button class="text-link" id="allModulesBtn">Atur Quiz →</button></div>
+            <div class="section-title-row"><div><h2 id="moduleSectionTitle">Modul Day 1</h2><p>Pilih hari dan modul untuk latihan yang lebih terarah.</p></div><button class="text-link" id="allModulesBtn">Atur Quiz →</button></div>
+            <div id="dayTabs" class="day-tabs" aria-label="Pilih hari"></div>
             <div id="dashboardModuleGrid" class="module-showcase"></div>
           </section>
 
@@ -91,7 +92,7 @@
             <div class="quick-actions">
               <button class="quick-card" id="practiceQuick"><span class="quick-icon blue">◎</span><div><strong>Practice Mode</strong><small>Feedback & pembahasan langsung setelah jawab.</small></div><b>›</b></button>
               <button class="quick-card" id="examQuick"><span class="quick-icon purple">▣</span><div><strong>Exam Mode</strong><small>Simulasi tanpa feedback sampai sesi selesai.</small></div><b>›</b></button>
-              <button class="quick-card" id="quickDrillBtn"><span class="quick-icon green">ϟ</span><div><strong>Quick Drill 10 Soal</strong><small>10 soal acak dari seluruh materi Day 1.</small></div><b>›</b></button>
+              <button class="quick-card" id="quickDrillBtn"><span class="quick-icon green">ϟ</span><div><strong>Quick Drill 10 Soal</strong><small>Hard-biased: Expert + Challenge dari Day yang dipilih.</small></div><b>›</b></button>
               <button class="quick-card" id="weaknessDrillBtn"><span class="quick-icon red">◎</span><div><strong>Weakness Drill</strong><small>Fokus pada soal yang pernah salah.</small></div><b>›</b></button>
             </div>
           </section>
@@ -128,6 +129,7 @@
           <div class="setup-layout">
             <section class="surface setup-main">
               <div class="section-title-row"><div><h2>Pilih Materi</h2><p>Bisa satu modul atau kombinasi beberapa modul.</p></div><button id="selectAllBtn" class="text-link">Pilih semua</button></div>
+              <div class="setup-day-row"><span class="field-label">Filter Hari</span><div id="setupDayTabs" class="day-tabs compact-tabs"></div></div>
               <div id="moduleGrid" class="setup-module-grid"></div>
             </section>
             <aside class="surface setup-side">
@@ -147,7 +149,7 @@
 
         <!-- QUIZ -->
         <section id="quizView" class="view quiz-page">
-          <div class="breadcrumb"><button data-view="dashboardView">Day 1</button><span>›</span><button data-view="quizSetupView">Quiz</button><span>›</span><strong id="breadcrumbModule">Semua Modul</strong></div>
+          <div class="breadcrumb"><button data-view="dashboardView" id="breadcrumbDay">Day 1</button><span>›</span><button data-view="quizSetupView">Quiz</button><span>›</span><strong id="breadcrumbModule">Semua Modul</strong></div>
           <section class="quiz-status surface">
             <div><strong id="quizModeTitle">Practice Mode</strong><small id="quizModeSubtitle">Belajar santai tanpa tekanan</small></div>
             <div class="quiz-progress-block"><div class="status-label"><strong id="questionCounter">Soal 1 dari 10</strong><span id="progressPercent">0%</span></div><div class="progress-track"><span id="progressBar"></span></div></div>
@@ -180,7 +182,7 @@
         <section id="resultView" class="view">
           <section class="result-hero">
             <div class="result-illustration">✓</div>
-            <div class="result-copy"><span>SELESAI</span><h1>Hasil Quiz Day 1</h1><p id="resultMessage">Sesi selesai. Lihat detail performa dan fokus latihan berikutnya.</p><div class="result-date" id="resultDate"></div></div>
+            <div class="result-copy"><span>SELESAI</span><h1>Hasil Quiz</h1><p id="resultMessage">Sesi selesai. Lihat detail performa dan fokus latihan berikutnya.</p><div class="result-date" id="resultDate"></div></div>
             <div class="result-score-block"><small>Skor Akhir</small><strong id="resultScore">0<span>/100</span></strong><div id="resultBadge" class="result-badge">Mulai lagi</div></div>
             <div class="result-donut" id="resultDonut"><span id="resultAccuracy">0%</span><small>Akurasi</small></div>
           </section>
@@ -223,7 +225,7 @@
         </section>
       </main>
 
-      <footer class="footer">General Banking Prep · Day 1 · Data tersimpan lokal di perangkat ini</footer>
+      <footer class="footer">General Banking Prep · 5-Day Challenge · Data tersimpan lokal di perangkat ini</footer>
     </div>
   </div>
 
