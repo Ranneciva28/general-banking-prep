@@ -1,48 +1,204 @@
 (() => {
   const BANK_KEY='generalBankingQuestionBankV6';
+  const PROGRESS_KEY='generalBankingModuleProgressV1';
   const BANK_SIZE=5000;
   const ACTIVE_LIMIT=50;
   const ORIGINAL=[...(window.QUESTION_BANK||[])];
   const moduleIds=[...new Set(ORIGINAL.map(q=>Number(q.moduleId)))].filter(Boolean);
-  const hash=str=>{let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
-  const rand=seed=>{let x=seed>>>0;x^=x<<13;x^=x>>>17;x^=x<<5;return(x>>>0)/4294967296};
-  const actors=['analis kredit','supervisor operasional','petugas layanan','relationship manager','pejabat pemutus','petugas compliance','auditor internal','petugas transaksi','risk officer','customer service','teller','branch operations officer'];
-  const contexts=['review harian','simulasi assessment','quality assurance','rapat evaluasi','second-check transaksi','uji kepatuhan','monitoring portofolio','post-test internal','case discussion','review dokumen','eskalasi operasional','evaluasi risiko'];
-  const prompts=['Pilih keputusan paling tepat berdasarkan substansi konsep.','Fokus pada perbedaan konsep yang paling menentukan jawaban.','Jangan memilih opsi hanya karena terdengar paling aman atau paling lengkap.','Tentukan jawaban yang paling defensible bila diuji ulang reviewer.','Abaikan detail pengalih perhatian yang tidak mengubah inti keputusan.','Pilih respons yang paling sesuai dengan proses, risiko, dan kewenangan.','Gunakan prinsip utama modul, bukan sekadar kemiripan kata pada opsi.','Pilih satu jawaban paling presisi di antara opsi yang sama-sama masuk akal.'];
+
   const SUPA_URL='https://pnisrktkkbzspolkfkag.supabase.co';
   const SUPA_KEY='sb_publishable_ClLcjnxymypzS2O6x1TzwA_c9y7-j1Y';
   const SESSION_KEY='gbpAnalyticsSessionV1';
   const sessionId=(()=>{let x=localStorage.getItem(SESSION_KEY);if(!x){x=`${Date.now().toString(36)}-${crypto.getRandomValues(new Uint32Array(2)).join('-')}`;localStorage.setItem(SESSION_KEY,x)}return x})();
   let analyticsCtx={page:'dashboardView',moduleId:null,day:null};
   let locationCache=null;
-  let lastQuizStart=0;
-  let lastResultSeen=false;
+
+  const hash=str=>{let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
+  const seeded=(seed,salt=0)=>{let x=(seed+Math.imul(salt+1,0x9e3779b1))>>>0;x^=x<<13;x^=x>>>17;x^=x<<5;return(x>>>0)/4294967296};
+  const cleanQuestion=text=>String(text||'').replace(/\s+/g,' ').trim();
+  const lowerFirst=text=>text ? text.charAt(0).toLowerCase()+text.slice(1) : text;
 
   function stateAll(){try{return JSON.parse(localStorage.getItem(BANK_KEY)||'{}')||{}}catch(e){return{}}}
-  function getState(mid){const a=stateAll(),r=a[String(mid)]||{};return{epoch:Number(r.epoch)||1,seen:Array.isArray(r.seen)?r.seen:[],active:Array.isArray(r.active)?r.active:[]}}
-  function saveState(mid,st){const a=stateAll();a[String(mid)]=st;localStorage.setItem(BANK_KEY,JSON.stringify(a))}
+  function getState(mid){const all=stateAll(),r=all[String(mid)]||{};return{epoch:Number(r.epoch)||1,seen:Array.isArray(r.seen)?r.seen:[],active:Array.isArray(r.active)?r.active:[]}}
+  function saveState(mid,st){const all=stateAll();all[String(mid)]=st;localStorage.setItem(BANK_KEY,JSON.stringify(all))}
   function basePool(mid){return ORIGINAL.filter(q=>Number(q.moduleId)===Number(mid))}
-  function bankQuestion(mid,slot,epoch){const pool=basePool(mid);if(!pool.length)return null;const seed=hash(`${mid}:${slot}:${epoch}`),base=pool[Math.floor(rand(seed)*pool.length)%pool.length],actor=actors[(seed>>>3)%actors.length],context=contexts[(seed>>>7)%contexts.length],prompt=prompts[(seed>>>11)%prompts.length],lead=[`Dalam ${context}, seorang ${actor} menghadapi kasus berikut.`,`Seorang ${actor} sedang melakukan ${context} atas situasi berikut.`,`Pada ${context}, tim meminta ${actor} menilai kasus berikut secara hati-hati.`,`Kasus berikut muncul saat ${context} dan harus diputuskan oleh ${actor}.`][(seed>>>15)%4];return{...base,id:`BANK-M${mid}-E${epoch}-S${slot}`,question:`${lead} ${base.question} ${prompt}`,options:[...base.options],source:`${base.source} · Question Bank ${slot}/${BANK_SIZE}`,difficulty:base.difficulty,generated:true,bankSlot:slot,bankEpoch:epoch,baseId:base.id}}
-  function applyActivePool(){const next=[];moduleIds.forEach(mid=>{const st=getState(mid);if(st.active.length){st.active.slice(0,ACTIVE_LIMIT).forEach(slot=>{const q=bankQuestion(mid,slot,st.epoch);if(q)next.push(q)})}else next.push(...basePool(mid).slice(0,ACTIVE_LIMIT))});const target=window.QUESTION_BANK||[];target.splice(0,target.length,...next)}
-  function pickFresh(st,count){const seen=new Set(st.seen),picked=[];let guard=0;while(picked.length<count&&guard<40000){const n=1+Math.floor(Math.random()*BANK_SIZE);guard++;if(!seen.has(n)&&!picked.includes(n))picked.push(n)}if(picked.length<count)for(let n=1;n<=BANK_SIZE&&picked.length<count;n++)if(!seen.has(n)&&!picked.includes(n))picked.push(n);return picked}
 
-  function deviceInfo(){const ua=navigator.userAgent||'';return{device:/Android|iPhone|iPad|Mobile/i.test(ua)?'Mobile':'Desktop',browser:/Edg\//.test(ua)?'Edge':/Chrome\//.test(ua)?'Chrome':/Safari\//.test(ua)&&!/Chrome\//.test(ua)?'Safari':/Firefox\//.test(ua)?'Firefox':'Other',os:/Windows/i.test(ua)?'Windows':/Android/i.test(ua)?'Android':/iPhone|iPad|iOS/i.test(ua)?'iOS':/Mac OS/i.test(ua)?'macOS':/Linux/i.test(ua)?'Linux':'Other'}}
-  async function track(type,extra={}){const d=deviceInfo();try{await fetch(`${SUPA_URL}/rest/v1/rpc/gbp_track_event`,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({p_session_id:sessionId,p_event_type:type,p_page:extra.page??analyticsCtx.page,p_module_id:extra.moduleId??analyticsCtx.moduleId,p_day:extra.day??analyticsCtx.day,p_question_count:Math.min(50,Math.max(0,Number(extra.questionCount)||0)),p_device_type:d.device,p_browser:d.browser,p_os:d.os,p_language:navigator.language||null,p_timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||null,p_screen:`${screen.width}x${screen.height}`,p_latitude:locationCache?.latitude??null,p_longitude:locationCache?.longitude??null,p_referrer:document.referrer||null,p_meta:extra.meta||{}}),keepalive:true})}catch(e){}}
-  window.GBPAnalytics={track,setContext:(next={})=>{analyticsCtx={...analyticsCtx,...next};track('view_change',next)},sessionId};
+  function professionalStem(base,seed){
+    const q=cleanQuestion(base.question);
+    const style=Math.floor(seeded(seed,3)*10);
+    if(style<=3) return q;
+    if(style===4) return `Perhatikan pernyataan berikut. ${q}`;
+    if(style===5) return `${q} Pilih jawaban yang paling tepat.`;
+    if(style===6) return `Berdasarkan kondisi berikut, tentukan jawaban yang paling tepat. ${q}`;
+    if(style===7) return `Manakah pilihan yang paling tepat untuk pertanyaan berikut? ${q}`;
+    if(style===8) return `Cermati kasus berikut. ${q}`;
+    return `Jika ${lowerFirst(q)}, manakah kesimpulan atau tindakan yang paling tepat?`;
+  }
 
-  function generate(mid){let st=getState(mid);if(BANK_SIZE-st.seen.length<ACTIVE_LIMIT)st={epoch:st.epoch+1,seen:[],active:[]};const fresh=pickFresh(st,ACTIVE_LIMIT);st.active=fresh;st.seen=[...st.seen,...fresh];saveState(mid,st);track('generate_questions',{moduleId:mid,day:basePool(mid)[0]?.day||null,questionCount:fresh.length,meta:{bankSize:BANK_SIZE,epoch:st.epoch,seen:st.seen.length}});sessionStorage.setItem('gbpGenerationToast',`50 soal baru untuk modul ini sudah dimuat. Soal sebelumnya tidak akan muncul lagi dari bank saat ini.`);location.reload()}
-  function toast(msg){const el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add('hidden'),2800)}
+  function bankQuestion(mid,slot,epoch){
+    const pool=basePool(mid);if(!pool.length)return null;
+    const seed=hash(`${mid}:${slot}:${epoch}`);
+    const base=pool[Math.floor(seeded(seed,1)*pool.length)%pool.length];
+    return {
+      ...base,
+      id:`BANK-M${mid}-E${epoch}-S${slot}`,
+      question:professionalStem(base,seed),
+      options:[...base.options],
+      source:`${base.source} · Bank ${slot}/${BANK_SIZE}`,
+      difficulty:base.difficulty,
+      generated:true,
+      bankSlot:slot,
+      bankEpoch:epoch,
+      baseId:base.id
+    };
+  }
+
+  function applyActivePool(){
+    const next=[];
+    moduleIds.forEach(mid=>{
+      const st=getState(mid);
+      if(st.active.length){
+        st.active.slice(0,ACTIVE_LIMIT).forEach(slot=>{const q=bankQuestion(mid,slot,st.epoch);if(q)next.push(q)});
+      }else{
+        next.push(...basePool(mid).slice(0,ACTIVE_LIMIT));
+      }
+    });
+    const target=window.QUESTION_BANK||[];
+    target.splice(0,target.length,...next);
+  }
+
+  function pickFresh(st,count){
+    const seen=new Set(st.seen),picked=[];
+    let guard=0;
+    while(picked.length<count&&guard<50000){
+      const n=1+Math.floor(Math.random()*BANK_SIZE);guard++;
+      if(!seen.has(n)&&!picked.includes(n))picked.push(n);
+    }
+    if(picked.length<count){
+      for(let n=1;n<=BANK_SIZE&&picked.length<count;n++)if(!seen.has(n)&&!picked.includes(n))picked.push(n);
+    }
+    return picked;
+  }
+
+  function clearModuleProgress(mid){
+    try{
+      const all=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'{}')||{};
+      delete all[String(mid)];
+      localStorage.setItem(PROGRESS_KEY,JSON.stringify(all));
+    }catch(e){localStorage.removeItem(PROGRESS_KEY)}
+    try{window.GBPApp?.clearModuleProgress?.(mid)}catch(e){}
+  }
+
+  function generate(mid){
+    let st=getState(mid);
+    if(BANK_SIZE-st.seen.length<ACTIVE_LIMIT)st={epoch:st.epoch+1,seen:[],active:[]};
+    const fresh=pickFresh(st,ACTIVE_LIMIT);
+    if(fresh.length<ACTIVE_LIMIT)return toast('Bank soal belum bisa menyiapkan 50 soal baru. Coba lagi.');
+    st.active=fresh;
+    st.seen=[...st.seen,...fresh];
+    saveState(mid,st);
+    clearModuleProgress(mid);
+    track('generate_questions',{moduleId:mid,day:basePool(mid)[0]?.day||null,questionCount:fresh.length,meta:{bankSize:BANK_SIZE,epoch:st.epoch,seen:st.seen.length}});
+    sessionStorage.setItem('gbpAutoOpenModule',String(mid));
+    sessionStorage.setItem('gbpGenerationToast','50 soal baru sudah aktif. Progress modul direset dan soal lama diganti.');
+    location.reload();
+  }
+
   function bankInfo(mid){const st=getState(mid);return{active:st.active.length,seen:st.seen.length,remaining:Math.max(0,BANK_SIZE-st.seen.length)}}
+  function toast(msg){const el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add('hidden'),3000)}
 
-  function cleanUI(){document.getElementById('bridgeLockedNav')?.remove();document.querySelector('.profile-chip')?.remove();const sidebar=document.querySelector('.sidebar-study-card');if(sidebar)sidebar.style.display='none';const footer=document.querySelector('.footer');if(footer)footer.textContent='Data tersimpan lokal di perangkat ini';const quick=document.querySelector('.quick-actions');if(quick){quick.querySelectorAll('.quick-card:not(#weaknessDrillBtn)').forEach(x=>x.remove());const title=quick.closest('.section-block')?.querySelector('.section-title-row');if(title)title.remove();quick.classList.add('weakness-only-grid')}}
-  function injectDashboardButtons(){document.querySelectorAll('.module-display-card').forEach(card=>{const start=card.querySelector('[data-module-start]');if(!start)return;const mid=Number(start.dataset.moduleStart),info=bankInfo(mid),sig=`${info.seen}:${info.remaining}`;let box=card.querySelector('.module-bank-box');if(!box){box=document.createElement('div');box.className='module-bank-box';start.parentNode.insertBefore(box,start)}if(box.dataset.sig!==sig){box.dataset.sig=sig;box.innerHTML=`<div><strong>Question Bank</strong><small>${info.seen.toLocaleString('id-ID')} pernah dimuat · ${info.remaining.toLocaleString('id-ID')} belum muncul</small></div><button type="button" data-bank-refresh="${mid}">↻ Generate new questions</button>`;box.querySelector('button').onclick=e=>{e.stopPropagation();generate(mid)}}})}
-  function injectSetupButtons(){document.querySelectorAll('.setup-module-card[data-module]').forEach(card=>{const mid=Number(card.dataset.module),info=bankInfo(mid),parent=card.parentElement;if(parent?.querySelector(`.setup-bank-inline[data-for="${mid}"]`))return;const box=document.createElement('div');box.className='setup-bank-inline';box.dataset.for=mid;box.innerHTML=`<small>${info.seen.toLocaleString('id-ID')}/${BANK_SIZE.toLocaleString('id-ID')} pernah dimuat</small><button type="button">↻ Generate new questions</button>`;box.querySelector('button').onclick=e=>{e.stopPropagation();generate(mid)};card.insertAdjacentElement('afterend',box)})}
-  function trackQuizState(){const quiz=document.getElementById('quizView'),result=document.getElementById('resultView');if(quiz?.classList.contains('active')&&Date.now()-lastQuizStart>1500){lastQuizStart=Date.now();lastResultSeen=false;const tag=document.getElementById('moduleTag')?.textContent||'';const q=ORIGINAL.find(x=>x.moduleName===tag);track('quiz_start',{moduleId:q?.moduleId||null,day:q?.day||null,questionCount:Number((document.getElementById('questionCounter')?.textContent||'').match(/dari\s+(\d+)/i)?.[1])||0})}if(result?.classList.contains('active')&&!lastResultSeen){lastResultSeen=true;const score=parseInt(document.getElementById('resultScore')?.textContent)||0;track('quiz_finish',{meta:{score}})}}
-  function inject(){cleanUI();injectDashboardButtons();injectSetupButtons();trackQuizState()}
+  function deviceInfo(){
+    const ua=navigator.userAgent||'';
+    return {
+      device:/Android|iPhone|iPad|Mobile/i.test(ua)?'Mobile':'Desktop',
+      browser:/Edg\//.test(ua)?'Edge':/Chrome\//.test(ua)?'Chrome':/Safari\//.test(ua)&&!/Chrome\//.test(ua)?'Safari':/Firefox\//.test(ua)?'Firefox':'Other',
+      os:/Windows/i.test(ua)?'Windows':/Android/i.test(ua)?'Android':/iPhone|iPad|iOS/i.test(ua)?'iOS':/Mac OS/i.test(ua)?'macOS':/Linux/i.test(ua)?'Linux':'Other'
+    };
+  }
+
+  async function track(type,extra={}){
+    const d=deviceInfo();
+    try{
+      await fetch(`${SUPA_URL}/rest/v1/rpc/gbp_track_event`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+        body:JSON.stringify({
+          p_session_id:sessionId,p_event_type:type,p_page:extra.page??analyticsCtx.page,
+          p_module_id:extra.moduleId??analyticsCtx.moduleId,p_day:extra.day??analyticsCtx.day,
+          p_question_count:Math.min(50,Math.max(0,Number(extra.questionCount)||0)),
+          p_device_type:d.device,p_browser:d.browser,p_os:d.os,p_language:navigator.language||null,
+          p_timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||null,p_screen:`${screen.width}x${screen.height}`,
+          p_latitude:locationCache?.latitude??null,p_longitude:locationCache?.longitude??null,
+          p_referrer:document.referrer||null,p_meta:extra.meta||{}
+        }),keepalive:true
+      });
+    }catch(e){}
+  }
+  window.GBPAnalytics={track,setContext:(next={})=>{analyticsCtx={...analyticsCtx,...next};track('view_change',next)},sessionId};
+  window.GBPQuestionBank={generate,bankInfo,BANK_SIZE,ACTIVE_LIMIT};
+
+  function cleanUI(){
+    const bridge=document.getElementById('bridgeLockedNav');if(bridge)bridge.style.display='none';
+    const side=document.querySelector('.sidebar-study-card');if(side)side.style.display='none';
+    const profile=document.querySelector('.profile-chip');if(profile)profile.style.display='none';
+    const footer=document.querySelector('.footer');if(footer)footer.textContent='Data tersimpan lokal di perangkat ini';
+    const quick=document.querySelector('.quick-actions');
+    if(quick){
+      quick.querySelectorAll('.quick-card:not(#weaknessDrillBtn)').forEach(x=>x.style.display='none');
+      const title=quick.closest('.section-block')?.querySelector('.section-title-row');if(title)title.style.display='none';
+      quick.classList.add('weakness-only-grid');
+    }
+    document.querySelectorAll('.module-bank-box,.setup-bank-inline').forEach(x=>x.remove());
+  }
+
+  function currentModuleId(){
+    const name=document.getElementById('moduleTag')?.textContent?.trim();
+    if(!name)return null;
+    const q=(window.QUESTION_BANK||[]).find(x=>x.moduleName===name);
+    return q?Number(q.moduleId):null;
+  }
+
+  function injectQuizGenerator(){
+    const quiz=document.getElementById('quizView');
+    if(!quiz?.classList.contains('active'))return;
+    const card=quiz.querySelector('.module-info-card');
+    const mid=currentModuleId();
+    if(!card||!mid)return;
+    const info=bankInfo(mid);
+    let box=card.querySelector('.quiz-generate-box');
+    if(!box){box=document.createElement('div');box.className='quiz-generate-box';card.appendChild(box)}
+    const sig=`${mid}:${info.seen}:${info.remaining}`;
+    if(box.dataset.sig===sig)return;
+    box.dataset.sig=sig;
+    box.innerHTML=`<div class="quiz-generate-copy"><span>QUESTION BANK</span><strong>Butuh set soal baru?</strong><small>Ganti seluruh pool dengan 50 soal baru. Progress modul ini akan direset.</small></div><button type="button" class="quiz-generate-btn">↻ Generate New Questions</button><div class="quiz-bank-meta">${info.seen.toLocaleString('id-ID')} pernah dimuat · ${info.remaining.toLocaleString('id-ID')} belum muncul</div>`;
+    box.querySelector('button').onclick=()=>{
+      if(confirm('Generate 50 soal baru? Progress pengerjaan modul ini akan direset dan soal aktif sekarang akan diganti.'))generate(mid);
+    };
+  }
+
+  function inject(){cleanUI();injectQuizGenerator()}
 
   applyActivePool();
   track(location.pathname.includes('/khusus/')?'bridge_open':'page_view');
   setInterval(()=>track('heartbeat'),45000);
-  try{navigator.permissions?.query({name:'geolocation'}).then(p=>{if(p.state==='granted')navigator.geolocation?.getCurrentPosition(pos=>{locationCache={latitude:Number(pos.coords.latitude.toFixed(5)),longitude:Number(pos.coords.longitude.toFixed(5))};track('heartbeat')},()=>{},{maximumAge:600000,timeout:3000})}).catch(()=>{})}catch(e){}
-  document.addEventListener('DOMContentLoaded',()=>{inject();const msg=sessionStorage.getItem('gbpGenerationToast');if(msg){sessionStorage.removeItem('gbpGenerationToast');setTimeout(()=>toast(msg),300)}const root=document.querySelector('.content');if(root)new MutationObserver(()=>inject()).observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});document.addEventListener('click',e=>{const start=e.target.closest('[data-module-start]');if(start){const mid=Number(start.dataset.moduleStart);track('module_open',{moduleId:mid,day:basePool(mid)[0]?.day||null})}})});
+  try{
+    navigator.permissions?.query({name:'geolocation'}).then(p=>{
+      if(p.state==='granted')navigator.geolocation?.getCurrentPosition(pos=>{
+        locationCache={latitude:Number(pos.coords.latitude.toFixed(5)),longitude:Number(pos.coords.longitude.toFixed(5))};track('heartbeat');
+      },()=>{},{maximumAge:600000,timeout:3000});
+    }).catch(()=>{});
+  }catch(e){}
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    inject();
+    const msg=sessionStorage.getItem('gbpGenerationToast');
+    if(msg){sessionStorage.removeItem('gbpGenerationToast');setTimeout(()=>toast(msg),450)}
+    const auto=Number(sessionStorage.getItem('gbpAutoOpenModule'));
+    if(auto){
+      sessionStorage.removeItem('gbpAutoOpenModule');
+      setTimeout(()=>window.GBPApp?.startModule?.(auto),120);
+    }
+    const root=document.querySelector('.content');
+    if(root)new MutationObserver(()=>inject()).observe(root,{childList:true,subtree:true});
+  });
 })();
