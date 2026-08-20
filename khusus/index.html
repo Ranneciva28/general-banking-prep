@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <meta name="theme-color" content="#0f2e73" />
+  <title>BRIDGE Preparation — Special Access</title>
+</head>
+<body>
+  <div class="shell">
+    <aside class="side">
+      <div class="brand-lockup">
+        <div class="brand-icon">◆</div>
+        <div><strong>BRIDGE</strong><span>PREPARATION</span></div>
+      </div>
+      <div class="hot-badge">HOT TOPIC with Bridge Preparation</div>
+      <nav class="special-nav">
+        <button class="active" data-special-view="setup"><span>⌂</span> Setup</button>
+        <button data-special-view="history"><span>▤</span> History</button>
+        <button data-special-view="about"><span>i</span> Anti-Pattern</button>
+      </nav>
+      <div class="side-spacer"></div>
+      <div class="secret-card">
+        <span>PRIVATE ROUTE</span>
+        <strong>/khusus</strong>
+        <p>Tidak ditautkan dari menu utama. Akses hanya lewat slug langsung.</p>
+      </div>
+      <div class="source-card">
+        <small>Source Set</small>
+        <strong>BRIDGE Materials</strong>
+        <span>22 topik · 142 concept cores</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <span class="eyebrow">SPECIAL ACCESS</span>
+          <strong>BRIDGE Question Generator</strong>
+        </div>
+        <div class="top-actions">
+          <div class="stat-pill"><b id="comboCount">12K+</b><span>kombinasi</span></div>
+          <div class="stat-pill"><b>72</b><span>paket</span></div>
+          <button id="themeBtn" class="icon-btn" title="Ubah tema">☾</button>
+        </div>
+      </header>
+
+      <section id="setupView" class="view active">
+        <section class="hero">
+          <div class="hero-copy">
+            <div class="hero-tags"><span>BRIDGE</span><span class="amber">PRIVATE BANK</span></div>
+            <h1>Soal yang nggak bisa<br><em>diakalin pakai pola.</em></h1>
+            <p>Generator ini sengaja menyeimbangkan posisi jawaban, memutus pola “opsi terpanjang = benar”, dan membuat variasi kasus baru di setiap sesi.</p>
+            <div class="hero-mini-stats">
+              <div><b>142</b><span>Concept Cores</span></div>
+              <div><b>72</b><span>Question Packages</span></div>
+              <div><b>2</b><span>Difficulty Modes</span></div>
+              <div><b>∞</b><span>Random Seeds</span></div>
+            </div>
+          </div>
+          <div class="anti-pattern-card">
+            <div class="shield">✓</div>
+            <div>
+              <span class="mini-title">ANTI-PATTERN ENGINE</span>
+              <h3>Heuristik “pilih jawaban paling panjang” = 25%</h3>
+              <p>Sama saja dengan menebak acak. Posisi A/B/C/D juga dibagi merata dan diacak setiap sesi.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="setup-grid">
+          <article class="panel">
+            <div class="panel-head"><div><span class="step">01</span><h2>Pilih Paket</h2></div><span id="packageTopicCount">6–9 topik / paket</span></div>
+            <div class="package-row">
+              <select id="packageSelect"></select>
+              <button id="randomPackageBtn" class="soft-btn">↻ Acak Paket</button>
+            </div>
+            <div id="packageTopics" class="topic-chips"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><div><span class="step">02</span><h2>Pilih Tingkat</h2></div></div>
+            <div class="difficulty-grid">
+              <button class="difficulty-card" data-difficulty="mudah">
+                <span class="diff-icon easy">M</span><div><strong>Mudah</strong><small>Tetap tricky. Fokus konsep & aplikasi singkat.</small></div><b>›</b>
+              </button>
+              <button class="difficulty-card active" data-difficulty="sulit">
+                <span class="diff-icon hard">S</span><div><strong>Sulit</strong><small>Case-heavy, KECUALI, two-step, numerik & trap.</small></div><b>›</b>
+              </button>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><div><span class="step">03</span><h2>Atur Sesi</h2></div></div>
+            <div class="session-options">
+              <label><span>Jumlah soal</span><select id="questionCount"><option value="20">20 soal</option><option value="40" selected>40 soal</option><option value="60">60 soal</option><option value="100">100 soal</option></select></label>
+              <label><span>Mode</span><select id="modeSelect"><option value="practice">Practice — pembahasan langsung</option><option value="exam">Exam — pembahasan di akhir</option></select></label>
+            </div>
+            <button id="startBtn" class="primary-btn">Generate Paket Baru <span>→</span></button>
+            <p class="microcopy">Setiap klik membuat seed baru. Paket yang sama tetap dapat menghasilkan susunan, kasus, angka, dan posisi jawaban berbeda.</p>
+          </article>
+        </section>
+
+        <section class="coverage panel wide-panel">
+          <div class="panel-head"><div><span class="step">BR</span><h2>Cakupan BRIDGE</h2></div><span>Source-driven</span></div>
+          <div id="coverageGrid" class="coverage-grid"></div>
+        </section>
+      </section>
+
+      <section id="quizView" class="view">
+        <div class="quiz-top">
+          <div><span id="quizPackage" class="eyebrow">BR-01</span><h2 id="quizDifficulty">Sulit</h2></div>
+          <div class="progress-wrap"><div><b id="counter">1 / 40</b><span id="progressPct">0%</span></div><div class="progress"><i id="progressBar"></i></div></div>
+          <div class="timer"><span>◷</span><div><small>Waktu</small><b id="timer">00:00</b></div></div>
+          <div class="score-live"><small>Akurasi</small><b id="liveScore">0%</b></div>
+        </div>
+
+        <div class="quiz-layout">
+          <article class="question-card">
+            <div class="question-meta"><span id="topicPill">Topic</span><span id="trapPill" class="trap hidden">TRAP QUESTION</span></div>
+            <h1 id="questionText"></h1>
+            <div id="options" class="options"></div>
+            <div id="feedback" class="feedback hidden"></div>
+            <div class="source-line"><span>Source</span><b id="sourceText">BRIDGE</b></div>
+          </article>
+          <aside class="quiz-side">
+            <div class="side-panel">
+              <h3>Navigator</h3>
+              <div class="legend"><span><i class="done"></i>Jawab</span><span><i class="now"></i>Saat ini</span><span><i></i>Belum</span></div>
+              <div id="navigator" class="navigator"></div>
+            </div>
+            <div class="side-panel cue-card">
+              <span>⚠</span><div><strong>Trap awareness</strong><p>Perhatikan kata <b>KECUALI</b>, <b>PALING TIDAK</b>, dan perbedaan “primary vs secondary”.</p></div>
+            </div>
+            <button id="finishEarlyBtn" class="finish-btn">Selesaikan Sesi</button>
+          </aside>
+        </div>
+        <div class="quiz-actions"><button id="prevBtn" class="outline-btn">← Sebelumnya</button><button id="skipBtn" class="outline-btn">Lewati</button><button id="nextBtn" class="primary-btn compact">Selanjutnya →</button></div>
+      </section>
+
+      <section id="resultView" class="view">
+        <section class="result-hero">
+          <div class="result-badge-big">✓</div>
+          <div><span class="eyebrow">SESSION COMPLETE</span><h1>BRIDGE Result</h1><p id="resultSubtitle">Paket selesai.</p></div>
+          <div class="score-block"><small>Skor</small><b id="resultScore">0</b><span>/100</span></div>
+          <div id="resultDonut" class="donut"><b id="resultAccuracy">0%</b><span>Akurasi</span></div>
+        </section>
+        <div class="result-stats">
+          <div><span class="green">✓</span><p><small>Benar</small><b id="correctCount">0</b></p></div>
+          <div><span class="red">×</span><p><small>Salah</small><b id="wrongCount">0</b></p></div>
+          <div><span class="orange">○</span><p><small>Lewat</small><b id="skipCount">0</b></p></div>
+          <div><span class="purple">◷</span><p><small>Waktu</small><b id="resultTime">0m</b></p></div>
+        </div>
+        <div class="result-grid">
+          <article class="panel"><div class="panel-head"><div><h2>Performa Topik</h2></div></div><div id="topicPerformance" class="topic-performance"></div></article>
+          <article class="panel"><div class="panel-head"><div><h2>Audit Pola Sesi</h2></div></div><div id="patternAudit" class="pattern-audit"></div></article>
+        </div>
+        <article class="panel review-panel"><div class="panel-head"><div><h2>Review Soal</h2></div><select id="reviewFilter"><option value="all">Semua</option><option value="wrong">Salah saja</option><option value="trap">Trap saja</option></select></div><div id="reviewList" class="review-list"></div></article>
+        <div class="result-actions"><button id="newVariantBtn" class="primary-btn">Generate Variant Baru</button><button id="samePackageBtn" class="soft-btn">Paket Sama, Seed Baru</button></div>
+      </section>
+
+      <section id="historyView" class="view">
+        <div class="page-title"><span class="eyebrow">LOCAL HISTORY</span><h1>Riwayat BRIDGE</h1><p>Disimpan hanya di browser ini.</p></div>
+        <div id="historyList" class="history-list panel"></div>
+      </section>
+
+      <section id="aboutView" class="view">
+        <div class="page-title"><span class="eyebrow">ANTI-PATTERN</span><h1>Kenapa lebih susah ditebak?</h1><p>Engine memisahkan kualitas soal dari pola tampilan jawabannya.</p></div>
+        <div class="about-grid">
+          <article class="panel"><span class="about-no">01</span><h3>Balanced answer slots</h3><p>Untuk sesi 40 soal, targetnya 10 jawaban benar di A, B, C, dan D — tetapi urutannya diacak.</p></article>
+          <article class="panel"><span class="about-no">02</span><h3>Longest-option decoy</h3><p>Opsi terpanjang sengaja ditempatkan independen dari jawaban benar. Akurasinya dipaksa sekitar 25%.</p></article>
+          <article class="panel"><span class="about-no">03</span><h3>Near-neighbor distractors</h3><p>Distraktor berasal dari konsep satu keluarga: misalnya Capacity vs Capital vs Collateral, bukan jawaban ngawur.</p></article>
+          <article class="panel"><span class="about-no">04</span><h3>Case mutation</h3><p>Nama, nominal, urutan, wording, dan sebagian kasus berubah berdasarkan seed sehingga sesi tidak identik.</p></article>
+          <article class="panel"><span class="about-no">05</span><h3>Fair traps</h3><p>Jebakan ada pada ketelitian konsep — KECUALI, primary/secondary, CDD/EDD, CTR/STR — bukan kalimat ambigu.</p></article>
+          <article class="panel"><span class="about-no">06</span><h3>Cross-topic integration</h3><p>Mode sulit dapat menggabungkan risk, KYC, 3LoD, PDP, BCM, kredit, dan akuntansi dalam satu kasus.</p></article>
+        </div>
+      </section>
+
+      <footer>BRIDGE Preparation · private slug · no menu redirect · local-only progress</footer>
+    </main>
+  </div>
+  <div id="toast" class="toast hidden"></div>
+  <script src="bridge-loader.js"></script>
+</body>
+</html>
