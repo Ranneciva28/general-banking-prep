@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <meta name="theme-color" content="#111827" />
+  <title>Cena Analytics</title>
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+<body>
+  <div id="loginView" class="login-shell">
+    <form id="loginForm" class="login-card">
+      <div class="logo">CA</div><span class="eyebrow">PRIVATE ADMIN</span><h1>Cena Analytics</h1><p>Monitoring real-time General Banking Prep.</p>
+      <label>Admin access token<input id="tokenInput" type="password" autocomplete="current-password" placeholder="Masukkan access token" required /></label>
+      <button type="submit">Masuk Dashboard</button><small>Slug ini tidak ditautkan dari website utama.</small><div id="loginError" class="error hidden">Token tidak valid atau koneksi gagal.</div>
+    </form>
+  </div>
+  <div id="dashboardView" class="dashboard hidden">
+    <aside><div class="brand"><div class="logo small">CA</div><div><strong>Cena Analytics</strong><span>General Banking Prep</span></div></div><nav><button class="active">Overview</button><button id="refreshSide">Refresh Data</button><button id="logoutBtn">Logout</button></nav><div class="privacy"><strong>Telemetry</strong><p>Lokasi presisi hanya tampil bila user sebelumnya memberi izin geolocation. Selain itu tampil timezone/device.</p></div></aside>
+    <main><header><div><span class="eyebrow">REAL-TIME MONITORING</span><h1>Traffic & Usage</h1><p id="lastUpdated">Belum dimuat</p></div><button id="refreshBtn">↻ Refresh</button></header>
+      <section class="kpis"><article><span>Live sekarang</span><strong id="activeUsers">0</strong><small>aktif ≤ 90 detik</small></article><article><span>Aktif 5 menit</span><strong id="active5m">0</strong><small>recent sessions</small></article><article><span>User hari ini</span><strong id="usersToday">0</strong><small>unique browser session</small></article><article><span>Visits hari ini</span><strong id="visitsToday">0</strong><small>page opens</small></article><article><span>Quiz hari ini</span><strong id="quizzesToday">0</strong><small>quiz starts</small></article><article><span>Soal generated</span><strong id="generatedToday">0</strong><small id="generatedAll">0 total</small></article></section>
+      <section class="grid two"><article class="panel"><div class="panel-head"><h2>Traffic 14 Hari</h2><span>daily</span></div><div id="dailyChart" class="bar-chart"></div></article><article class="panel"><div class="panel-head"><h2>Jam Paling Aktif Hari Ini</h2><span>WIB</span></div><div id="hourChart" class="hour-chart"></div></article></section>
+      <section class="grid two"><article class="panel"><div class="panel-head"><h2>Modul Paling Laku</h2><span>open + quiz + generate</span></div><div id="moduleTable" class="rows"></div></article><article class="panel"><div class="panel-head"><h2>Device & Timezone</h2><span>30 hari</span></div><div class="split"><div><h3>Device</h3><div id="deviceRows" class="rows mini"></div></div><div><h3>Timezone</h3><div id="timezoneRows" class="rows mini"></div></div></div></article></section>
+      <section class="panel"><div class="panel-head"><h2>Active User Process</h2><span id="activeLabel">0 sesi recent</span></div><div class="table-wrap"><table><thead><tr><th>Session</th><th>Last seen</th><th>Page</th><th>Day/Module</th><th>Device</th><th>Location</th><th>Generate</th><th>Event</th></tr></thead><tbody id="sessionTable"></tbody></table></div></section>
+      <section class="panel"><div class="panel-head"><h2>Recent Events</h2><span>latest 80</span></div><div class="table-wrap"><table><thead><tr><th>Time</th><th>Session</th><th>Event</th><th>Day</th><th>Module</th><th>Questions</th></tr></thead><tbody id="eventTable"></tbody></table></div></section>
+      <footer>Data analytics disimpan di Supabase. Dashboard auto-refresh setiap 30 detik.</footer>
+    </main>
+  </div><script src="js/admin.js"></script>
+</body></html>
