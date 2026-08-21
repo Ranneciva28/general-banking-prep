@@ -1,0 +1,44 @@
+name: Admin insights and mobile nav rollout
+on:
+  push:
+    paths:
+      - '.github/workflows/admin-tracking-mobile-rollout.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          old='2026.08.21.1740'; new='2026.08.21.1812'
+          p=Path('index.html'); s=p.read_text().replace(old,new); p.write_text(s)
+          Path('version.json').write_text(json.dumps({'build':new,'forceCacheReset':True},separators=(',',':')))
+
+          ap=Path('cenaidja/index.html'); a=ap.read_text()
+          a=a.replace('2026.08.21.1602','2026.08.21.1812')
+          if 'learning-insights.js' not in a:
+            a=a.replace('</body>','<script src="js/learning-insights.js?v=2026.08.21.1812"></script></body>')
+          ap.write_text(a)
+
+          css=Path('css/v5.css'); c=css.read_text()
+          marker='/* Mobile previous button hard fix */'
+          if marker not in c:
+            c += '''\n\n/* Mobile previous button hard fix */\n@media(max-width:720px){\n  #quizView .quiz-bottom-nav #prevBtn{display:inline-flex!important;visibility:visible!important;opacity:1!important;align-items:center!important;justify-content:center!important}\n  #quizView .quiz-bottom-nav{grid-template-columns:minmax(0,1fr) minmax(0,.8fr) minmax(0,1.15fr)!important}\n}\n'''
+          css.write_text(c)
+
+          ac=Path('cenaidja/css/admin.css'); x=ac.read_text()
+          if '.learning-insights' not in x:
+            x += '''\n.learning-insights{margin-top:13px}.insight-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,220px));gap:11px;margin-bottom:13px}.insight-kpis article{background:#fff;border:1px solid #e5e7eb;border-radius:15px;padding:15px;box-shadow:0 6px 20px #1f29370a}.insight-kpis span{display:block;color:#6b7280;font-size:9px}.insight-kpis strong{display:block;font-size:26px;margin:7px 0 4px}.insight-kpis small{font-size:8px;color:#9ca3af}.insight-question{grid-template-columns:minmax(0,1fr) auto auto}.insight-question strong{line-height:1.45}@media(max-width:800px){.insight-kpis{grid-template-columns:1fr 1fr}.insight-question{grid-template-columns:1fr}.insight-question span,.insight-question small{display:block}}\n'''
+          ac.write_text(x)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html version.json cenaidja/index.html css/v5.css cenaidja/css/admin.css
+          git diff --cached --quiet || git commit -m "Add admin weakness tracking and mobile previous button"
+          git push
