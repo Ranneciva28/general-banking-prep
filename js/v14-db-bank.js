@@ -5,13 +5,14 @@
   const STATE_KEY='gbpDbBankV14';
   const PROGRESS_KEY='generalBankingModuleProgressV1';
   const LOCAL_SEEN_KEY='gbpQuestionTextSeenV17';
-  const BANK_SIZE=5000, ACTIVE_LIMIT=50, SHORT_TARGET=45, LONG_TARGET=5;
+  const BANK_SIZE=5000, ACTIVE_LIMIT=25, SHORT_TARGET=22, LONG_TARGET=3;
   const SOURCE=[...(window.__GBP_SOURCE_BANK__||[])];
   if(!SOURCE.length)return;
 
   const clean=s=>String(s??'').replace(/\s+/g,' ').trim();
   const lower=s=>clean(s).toLocaleLowerCase('id-ID');
   const textKey=q=>lower(q?.question||'').replace(/[^a-z0-9à-öø-ÿ]+/giu,' ').replace(/\s+/g,' ').trim();
+  const optionKey=q=>(Array.isArray(q?.options)?q.options:[]).map(x=>lower(x).replace(/[^a-z0-9à-öø-ÿ]+/giu,' ').replace(/\s+/g,' ').trim()).filter(Boolean).sort().join('|');
   const hash=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
   const rnd=(seed,salt=0)=>{let x=(seed+Math.imul(salt+1,0x9e3779b1))>>>0;x^=x<<13;x^=x>>>17;x^=x<<5;return(x>>>0)/4294967296};
   const cap=s=>String(s??'').replace(/^(\s*[^A-Za-zÀ-ÖØ-öø-ÿ]*)([a-zà-öø-ÿ])/u,(_,a,b)=>a+b.toLocaleUpperCase('id-ID'));
@@ -50,7 +51,7 @@
 
   try{const mk='gbpLocalFirstV17';if(!localStorage.getItem(mk)){localStorage.removeItem(STATE_KEY);state={};localStorage.setItem(mk,'1')}}catch(e){}
 
-  const isLongSlot=slot=>slot%10===0;
+  const isLongSlot=slot=>slot%8===0;
   const typeFor=slot=>{const x=hash(`type-v14:${slot}`)%100;return x<55?'normal':x<75?'except':'case'};
   const facetFor=(mid,slot)=>hash(`facet-v14:${mid}:${slot}`)%64;
   function baseFor(mid,slot){
@@ -96,23 +97,23 @@
   }
 
   function replaceModule(mid,slots){
-    const target=window.QUESTION_BANK||[],others=target.filter(q=>Number(q.moduleId)!==Number(mid)),seen=new Set(),qs=[];
-    for(const slot of slots){const q=question(mid,slot),k=textKey(q);if(!q||!k||seen.has(k))continue;seen.add(k);qs.push(q)}
+    const target=window.QUESTION_BANK||[],others=target.filter(q=>Number(q.moduleId)!==Number(mid)),seen=new Set(),seenOptions=new Set(),qs=[];
+    for(const slot of slots){const q=question(mid,slot),k=textKey(q),ok=optionKey(q);if(!q||!k||!ok||seen.has(k)||seenOptions.has(ok))continue;seen.add(k);seenOptions.add(ok);qs.push(q)}
     target.splice(0,target.length,...others,...order(qs));
   }
   function previewSlots(mid){
     const st=getState(mid);if(st.active.length===ACTIVE_LIMIT)return st.active;
-    const shorts=[],longs=[],seen=new Set(),start=((mid*191)%BANK_SIZE)+1;
+    const shorts=[],longs=[],seen=new Set(),seenOptions=new Set(),start=((mid*191)%BANK_SIZE)+1;
     for(let i=0;i<BANK_SIZE&&(shorts.length<SHORT_TARGET||longs.length<LONG_TARGET);i++){
-      const s=((start-1+i*107)%BANK_SIZE)+1,q=question(mid,s),k=textKey(q);if(!q||!k||seen.has(k))continue;
+      const s=((start-1+i*107)%BANK_SIZE)+1,q=question(mid,s),k=textKey(q),ok=optionKey(q);if(!q||!k||!ok||seen.has(k)||seenOptions.has(ok))continue;
       const target=isLongSlot(s)?longs:shorts,need=isLongSlot(s)?LONG_TARGET:SHORT_TARGET;if(target.length>=need)continue;
-      seen.add(k);target.push(s);
+      seen.add(k);seenOptions.add(ok);target.push(s);
     }
     return [...shorts,...longs];
   }
   function applyPreviews(){
-    const target=window.QUESTION_BANK||[],next=[],globalSeen=new Set();
-    for(const mid of moduleIds){for(const s of previewSlots(mid)){const q=question(mid,s),k=textKey(q);if(!q||!k||globalSeen.has(k))continue;globalSeen.add(k);next.push(q)}}
+    const target=window.QUESTION_BANK||[],next=[],globalSeen=new Set(),globalOptions=new Set();
+    for(const mid of moduleIds){for(const s of previewSlots(mid)){const q=question(mid,s),k=textKey(q),ok=optionKey(q);if(!q||!k||!ok||globalSeen.has(k)||globalOptions.has(ok))continue;globalSeen.add(k);globalOptions.add(ok);next.push(q)}}
     target.splice(0,target.length,...order(next));
   }
 
@@ -120,28 +121,28 @@
   function payload(mid,slots){return slots.map(s=>{const q=question(mid,s);return{slot:s,question:q.question,options:q.options,answer:q.answer,explanation:q.explanation,source:q.source,baseId:q.baseId,questionType:q.questionType,difficulty:q.difficulty,structureKey:q.structureKey}})}
 
   function pickLocalUnique(mid){
-    const shorts=[],longs=[],seen=new Set(),start=1+Math.floor(Math.random()*BANK_SIZE),step=109;
+    const shorts=[],longs=[],seen=new Set(),seenOptions=new Set(),start=1+Math.floor(Math.random()*BANK_SIZE),step=109;
     const scan=(ignoreHistory=false)=>{
       for(let i=0;i<BANK_SIZE&&(shorts.length<SHORT_TARGET||longs.length<LONG_TARGET);i++){
-        const slot=((start-1+i*step)%BANK_SIZE)+1,q=question(mid,slot),k=textKey(q);if(!q||!k||seen.has(k)||(!ignoreHistory&&localSeen[k]))continue;
+        const slot=((start-1+i*step)%BANK_SIZE)+1,q=question(mid,slot),k=textKey(q),ok=optionKey(q);if(!q||!k||!ok||seen.has(k)||seenOptions.has(ok)||(!ignoreHistory&&(localSeen['q:'+k]||localSeen['o:'+ok])))continue;
         const target=isLongSlot(slot)?longs:shorts,need=isLongSlot(slot)?LONG_TARGET:SHORT_TARGET;if(target.length>=need)continue;
-        seen.add(k);target.push(slot);
+        seen.add(k);seenOptions.add(ok);target.push(slot);
       }
     };
     scan(false);if(shorts.length<SHORT_TARGET||longs.length<LONG_TARGET)scan(true);
     const active=[...shorts,...longs];
-    if(active.length<ACTIVE_LIMIT){for(const s of previewSlots(mid)){const q=question(mid,s),k=textKey(q);if(!q||!k||seen.has(k))continue;seen.add(k);active.push(s);if(active.length===ACTIVE_LIMIT)break}}
-    for(const s of active){const k=textKey(question(mid,s));if(k)localSeen[k]=Date.now()}
+    if(active.length<ACTIVE_LIMIT){for(const s of previewSlots(mid)){const q=question(mid,s),k=textKey(q),ok=optionKey(q);if(!q||!k||!ok||seen.has(k)||seenOptions.has(ok))continue;seen.add(k);seenOptions.add(ok);active.push(s);if(active.length===ACTIVE_LIMIT)break}}
+    for(const s of active){const q=question(mid,s),k=textKey(q),ok=optionKey(q);if(k)localSeen['q:'+k]=Date.now();if(ok)localSeen['o:'+ok]=Date.now()}
     saveSeen();saveState(mid,{active,synced:false,updatedAt:Date.now()});replaceModule(mid,active);return active;
   }
   async function syncActive(mid,active){
     if(!active?.length)return;
-    try{await rpc('gbp_question_register_batch',{p_client_id:clientId,p_module_id:mid,p_questions:payload(mid,active),p_requested_count:Math.min(50,active.length)});saveState(mid,{active,synced:true,updatedAt:Date.now()})}catch(e){console.warn('Background database sync skipped',e)}
+    try{await rpc('gbp_question_register_batch',{p_client_id:clientId,p_module_id:mid,p_questions:payload(mid,active),p_requested_count:Math.min(25,active.length)});saveState(mid,{active,synced:true,updatedAt:Date.now()})}catch(e){console.warn('Background database sync skipped',e)}
   }
   async function reserveNew(mid){const active=pickLocalUnique(mid);setTimeout(()=>syncActive(mid,active),0);return active}
   async function ensureModule(mid){
     const st=getState(mid);
-    if(st.active.length===ACTIVE_LIMIT){const seen=new Set();let valid=true;for(const slot of st.active){const k=textKey(question(mid,slot));if(!k||seen.has(k)){valid=false;break}seen.add(k)}if(valid){replaceModule(mid,st.active);if(!st.synced)setTimeout(()=>syncActive(mid,st.active),0);return st.active}}
+    if(st.active.length===ACTIVE_LIMIT){const seen=new Set(),seenOptions=new Set();let valid=true;for(const slot of st.active){const q=question(mid,slot),k=textKey(q),ok=optionKey(q);if(!k||!ok||seen.has(k)||seenOptions.has(ok)){valid=false;break}seen.add(k);seenOptions.add(ok)}if(valid){replaceModule(mid,st.active);if(!st.synced)setTimeout(()=>syncActive(mid,st.active),0);return st.active}}
     return reserveNew(mid);
   }
 
@@ -150,7 +151,7 @@
   const setBusy=(btn,on)=>{if(!btn)return;btn.disabled=on;btn.dataset.oldText=btn.dataset.oldText||btn.textContent;btn.textContent=on?'Menyiapkan soal baru…':btn.dataset.oldText};
   async function generate(mid,button){
     setBusy(button,true);
-    try{const active=await reserveNew(mid);clearProgress(mid);try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,day:pool(mid)[0]?.day||null,questionCount:active.length,meta:{databaseBank:true,engine:'v17-local-first',noRepeat:true,fullUnique:true,short:45,long:5,naturalStem:true}})}catch(e){}sessionStorage.setItem('gbpAutoOpenModule',String(mid));sessionStorage.setItem('gbpGenerationToast','50 soal baru aktif tanpa duplikasi stem.');location.reload()}
+    try{const active=await reserveNew(mid);clearProgress(mid);try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,day:pool(mid)[0]?.day||null,questionCount:active.length,meta:{databaseBank:true,engine:'v18-distinct-25',noRepeat:true,fullUnique:true,uniqueOptions:true,short:22,long:3,naturalStem:true}})}catch(e){}sessionStorage.setItem('gbpAutoOpenModule',String(mid));sessionStorage.setItem('gbpGenerationToast','25 soal baru aktif. Stem dan set opsi tidak diulang.');location.reload()}
     catch(e){console.error(e);setBusy(button,false);toast('Bank soal lokal belum dapat disiapkan. Silakan coba lagi.')}
   }
   function midFromStart(btn){return Number(btn?.dataset?.moduleStart||btn?.dataset?.specialStart||btn?.dataset?.nupmkStart||0)||null}
@@ -158,7 +159,7 @@
 
   document.addEventListener('click',e=>{
     const gen=e.target.closest?.('.quiz-generate-btn');
-    if(gen){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();const name=document.getElementById('moduleTag')?.textContent?.trim(),q=(window.QUESTION_BANK||[]).find(x=>x.moduleName===name),mid=q?Number(q.moduleId):null;if(mid&&confirm('Generate 50 soal baru? Soal yang sudah dipakai tetap tercatat dan tidak akan dipilih kembali.'))generate(mid,gen);return}
+    if(gen){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();const name=document.getElementById('moduleTag')?.textContent?.trim(),q=(window.QUESTION_BANK||[]).find(x=>x.moduleName===name),mid=q?Number(q.moduleId):null;if(mid&&confirm('Generate 25 soal baru? Soal yang sudah dipakai tetap tercatat dan tidak akan dipilih kembali.'))generate(mid,gen);return}
     const setup=e.target.closest?.('#startQuizBtn');
     if(setup&&setup.dataset.dbPrepared!=='1'){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();prepareSetup(setup).then(ok=>{if(!ok){setBusy(setup,false);return}setup.dataset.dbPrepared='1';setup.click();setTimeout(()=>delete setup.dataset.dbPrepared,0)}).catch(err=>{console.error(err);setBusy(setup,false);setup.dataset.dbPrepared='1';setup.click();setTimeout(()=>delete setup.dataset.dbPrepared,0)});return}
     const start=e.target.closest?.('[data-module-start],[data-special-start],[data-nupmk-start]');if(!start||start.dataset.dbPrepared==='1')return;const mid=midFromStart(start);if(!mid)return;
@@ -166,5 +167,5 @@
   },true);
 
   applyPreviews();
-  document.addEventListener('DOMContentLoaded',()=>{if(window.GBPQuestionBank){window.GBPQuestionBank.generate=mid=>generate(mid,document.querySelector('.quiz-generate-btn'));window.GBPQuestionBank.bankInfo=mid=>{const st=getState(mid);return{active:st.active.length||50,seen:null,remaining:null,database:true,engine:'v17-local-first'}}}window.GBPDatabaseQuestionBank={engine:'v17-local-first',bankSize:BANK_SIZE,ensureModule,reserveNew,clientId}});
+  document.addEventListener('DOMContentLoaded',()=>{if(window.GBPQuestionBank){window.GBPQuestionBank.generate=mid=>generate(mid,document.querySelector('.quiz-generate-btn'));window.GBPQuestionBank.bankInfo=mid=>{const st=getState(mid);return{active:st.active.length||50,seen:null,remaining:null,database:true,engine:'v18-distinct-25'}}}window.GBPDatabaseQuestionBank={engine:'v18-distinct-25',bankSize:BANK_SIZE,ensureModule,reserveNew,clientId}});
 })();
