@@ -1,3 +1,4 @@
+# retrigger
 name: V16 duplicate-free rollout
 on:
   push:
@@ -14,7 +15,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import json
-          old='2026.08.21.2012'; new='2026.08.21.2247'
+          old='2026.08.21.1925'; new='2026.08.21.2247'
           p=Path('index.html'); s=p.read_text().replace(old,new)
           if 'v16-source-variants.js' not in s:
             s=s.replace(f'<script src="js/v14-db-bank.js?v={new}"></script>',f'<script src="js/v16-source-variants.js?v={new}"></script>\n  <script src="js/v14-db-bank.js?v={new}"></script>\n  <script src="js/v16-dedupe.js?v={new}"></script>')
