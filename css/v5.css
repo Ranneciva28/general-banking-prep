@@ -1,9 +1,11 @@
 /* V6 stable question bank + simplified shell */
 #bridgeLockedNav,.sidebar-study-card,.profile-chip{display:none!important}.quick-actions .quick-card:not(#weaknessDrillBtn){display:none!important}.quick-actions{grid-template-columns:minmax(0,460px)!important}.module-display-card{min-height:238px}.module-display-card .module-start{margin-top:auto}.module-bank-box,.setup-bank-inline{display:none!important}.quiz-generate-box{margin-top:16px;padding:14px;border-radius:14px;border:1px solid rgba(245,158,11,.42);background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(36,84,230,.08));box-shadow:0 10px 28px rgba(22,35,72,.08);display:grid;gap:10px}.quiz-generate-copy{display:grid;gap:4px}.quiz-generate-copy>span{font-size:8px;font-weight:900;letter-spacing:.13em;color:#d97706}.quiz-generate-copy strong{font-size:13px;line-height:1.25}.quiz-generate-copy small{font-size:9px;line-height:1.5;color:var(--muted)}.quiz-generate-btn{width:100%;border:0;border-radius:10px;padding:11px 10px;background:linear-gradient(135deg,#f59e0b,#ea7c0b);color:#fff;font-size:10px;font-weight:900;cursor:pointer;box-shadow:0 8px 18px rgba(234,124,11,.22);transition:.18s ease}.quiz-generate-btn:hover{transform:translateY(-1px);filter:brightness(1.03)}.quiz-bank-meta{font-size:8px;color:var(--muted);text-align:center}.weakness-only-grid{grid-template-columns:minmax(0,460px)!important}[data-theme="dark"] .quiz-generate-box{background:linear-gradient(135deg,rgba(245,158,11,.14),rgba(72,103,240,.12));border-color:rgba(245,158,11,.34)}
+.question-type-badge{margin-left:auto;font-size:8px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--primary);background:var(--primary-soft);border:1px solid rgba(39,85,231,.16);border-radius:999px;padding:5px 8px;white-space:nowrap}.question-panel #questionText{white-space:pre-line}
 
 /* Mobile quiz controls: always reachable while reading the question/options */
 @media(max-width:720px){
   .module-display-card{min-height:242px}.quick-actions,.weakness-only-grid{grid-template-columns:1fr!important}.quiz-generate-box{padding:12px}
+  .question-type-badge{font-size:7px;padding:4px 7px;max-width:46%;overflow:hidden;text-overflow:ellipsis}
   #quizView{padding-bottom:96px!important}
   #quizView .quiz-bottom-nav{
     position:fixed!important;
