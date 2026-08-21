@@ -1,3 +1,4 @@
+# retrigger
 name: Fix NUPMK database load
 on:
   push:
