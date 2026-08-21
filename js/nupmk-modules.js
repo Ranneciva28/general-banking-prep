@@ -18,7 +18,6 @@
     { id:35, code:'K.64GEB00.017.1', name:'Mengelola Aspek-Aspek Hukum', source:[4,17,20,21,22,23,24] }
   ];
 
-  // Remove stale pre-generator NUPMK clones if this script is re-evaluated in the same page.
   for (let i = bank.length - 1; i >= 0; i--) {
     if (Number(bank[i]?.moduleId) >= 26 && Number(bank[i]?.moduleId) <= 35 && String(bank[i]?.id||'').startsWith('NUPMK-')) bank.splice(i,1);
   }
@@ -35,7 +34,7 @@
       day:CATEGORY_DAY,
       unitCode:unit.code,
       category:'NUPMK Unit Kompetensi',
-      source:`${q.source} · NUPMK ${unit.code}`,
+      source:q.source,
       nupmkSourceModule:Number(q.moduleId)
     }));
   });
