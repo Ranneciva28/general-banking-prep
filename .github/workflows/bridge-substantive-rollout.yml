@@ -1,0 +1,52 @@
+name: Bridge substantive rollout
+on:
+  push:
+    paths:
+      - '.github/workflows/bridge-substantive-rollout.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          js=Path('js/v10-db-bank.js')
+          s=js.read_text()
+          old="""  function lead(mid,slot){
+    const n=slot-1;
+    const a=actors[n%actors.length];
+    const b=actions[Math.floor(n/actors.length)%actions.length];
+    const c=contexts[Math.floor(n/(actors.length*actions.length))%contexts.length];
+    return `${a} ${b} pada ${moduleTag(mid)} ${c}.`;
+  }
+"""
+          new="""  function lead(mid,slot){
+    const n=slot-1;
+    const a=actors[n%actors.length];
+    const b=actions[Math.floor(n/actors.length)%actions.length];
+    const c=contexts[Math.floor(n/(actors.length*actions.length))%contexts.length];
+    // BRIDGE adalah kategori sumber materi, bukan bagian dari bunyi soal.
+    // Tetap gunakan kombinasi pembuka 5.000-varian untuk menjaga uniqueness,
+    // tetapi tanpa label/kata BRIDGE di pertanyaan yang dilihat user.
+    if(Number(mid)===25)return `${a} ${b} ${c}.`;
+    return `${a} ${b} pada ${moduleTag(mid)} ${c}.`;
+  }
+"""
+          if old not in s:
+              raise SystemExit('lead function signature changed; aborting')
+          js.write_text(s.replace(old,new))
+          oldbuild='2026.08.21.1628'; newbuild='2026.08.21.1654'
+          p=Path('index.html'); p.write_text(p.read_text().replace(oldbuild,newbuild))
+          Path('version.json').write_text(json.dumps({'build':newbuild,'forceCacheReset':True},separators=(',',':')))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/v10-db-bank.js index.html version.json
+          git diff --cached --quiet || git commit -m "Remove BRIDGE label from question stems"
+          git push
