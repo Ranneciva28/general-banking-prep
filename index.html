@@ -11,7 +11,7 @@
   <title>General Banking Prep</title>
   <script>
     (()=>{
-      const BUILD='2026.08.21.1113';
+      const BUILD='2026.08.21.1249';
       const KEY='gbpForcedCacheBuild';
       const clearRuntime=async()=>{
         try{if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()));}}catch(e){}
@@ -36,8 +36,8 @@
       })();
     })();
   </script>
-  <link rel="stylesheet" href="css/style.css?v=2026.08.21.1113" />
-  <link rel="stylesheet" href="css/v5.css?v=2026.08.21.1113" />
+  <link rel="stylesheet" href="css/style.css?v=2026.08.21.1249" />
+  <link rel="stylesheet" href="css/v5.css?v=2026.08.21.1249" />
 </head>
 <body>
   <div class="app-layout">
@@ -52,11 +52,6 @@
       <nav class="nav-list" aria-label="Navigasi utama">
         <button class="nav-item active" data-view="dashboardView"><span class="nav-icon">⌂</span><span>Dashboard</span></button>
         <button class="nav-item" data-view="quizSetupView"><span class="nav-icon">?</span><span>Quiz</span></button>
-        <button class="nav-item bridge-locked-nav" id="bridgeLockedNav" type="button" aria-label="BRIDGE Preparation — akses khusus">
-          <span class="nav-icon">◆</span>
-          <span class="bridge-nav-copy"><span>BRIDGE Prep</span><small>HOT TOPIC with Bridge Preparation</small></span>
-          <span class="bridge-nav-lock">🔒</span>
-        </button>
         <button class="nav-item" data-view="reviewView"><span class="nav-icon">▤</span><span>Review</span></button>
         <button class="nav-item" data-view="bookmarksView"><span class="nav-icon">♧</span><span>Bookmarks</span></button>
         <button class="nav-item" data-view="statisticsView"><span class="nav-icon">▥</span><span>Statistik</span></button>
@@ -90,16 +85,25 @@
       </header>
 
       <main class="content">
+        <!-- DASHBOARD -->
         <section id="dashboardView" class="view active">
           <section class="hero-card">
             <div class="hero-copy">
               <span class="hero-kicker">5-Day General Banking Preparation</span>
               <h1 id="heroTitle">General Banking · Day 1</h1>
               <p id="heroDescription">Latihan berbasis kasus dengan distraktor yang sengaja dibuat rapat. Fokusnya memahami konsep, bukan menebak pola jawaban.</p>
-              <div class="hero-actions"><button class="btn btn-white" id="continueLearningBtn">▶ Lanjutkan Belajar</button><button class="btn btn-glass" id="heroExamBtn">Simulasi Ujian</button></div>
+              <div class="hero-actions">
+                <button class="btn btn-white" id="continueLearningBtn">▶ Lanjutkan Belajar</button>
+                <button class="btn btn-glass" id="heroExamBtn">Simulasi Ujian</button>
+              </div>
             </div>
             <div class="hero-progress-card">
-              <div><h3>Progress Hari Ini</h3><div class="donut-wrap"><div class="donut" id="todayDonut"><span id="todayProgress">0%</span><small>Selesai</small></div></div></div>
+              <div>
+                <h3>Progress Hari Ini</h3>
+                <div class="donut-wrap">
+                  <div class="donut" id="todayDonut"><span id="todayProgress">0%</span><small>Selesai</small></div>
+                </div>
+              </div>
               <div class="hero-metrics">
                 <div class="hero-metric"><span class="metric-icon green">↗</span><div><strong id="heroStreak">1</strong><small>Hari Beruntun</small></div></div>
                 <div class="hero-metric"><span class="metric-icon blue">▤</span><div><strong id="heroTotalQuestions">432</strong><small>Total Soal</small></div></div>
@@ -110,7 +114,8 @@
 
           <section class="section-block">
             <div class="section-title-row"><div><h2 id="moduleSectionTitle">Modul Day 1</h2><p>Pilih hari dan modul untuk latihan yang lebih terarah.</p></div><button class="text-link" id="allModulesBtn">Atur Quiz →</button></div>
-            <div id="dayTabs" class="day-tabs" aria-label="Pilih hari"></div><div id="dashboardModuleGrid" class="module-showcase"></div>
+            <div id="dayTabs" class="day-tabs" aria-label="Pilih hari"></div>
+            <div id="dashboardModuleGrid" class="module-showcase"></div>
           </section>
 
           <section class="section-block">
@@ -126,55 +131,141 @@
           <section class="section-block">
             <div class="section-title-row compact"><h2>Ringkasan Performa</h2><button class="text-link" data-view="statisticsView">Lihat statistik →</button></div>
             <div class="performance-summary">
-              <article class="summary-card accuracy-card"><div class="card-head"><span>Akurasi Kamu</span><span class="info-dot">i</span></div><div class="accuracy-main"><strong id="dashboardAccuracy">0%</strong><span id="accuracyDelta">Mulai latihan untuk membangun data.</span></div><div class="thin-progress"><span id="accuracyProgress"></span></div><div id="miniTrend" class="mini-chart" aria-hidden="true"></div></article>
-              <article class="summary-card"><div class="card-head"><span>Soal Difavoritkan</span><span class="info-dot">i</span></div><div class="big-stat"><strong id="bookmarkCount">0</strong><span>Soal</span></div><button class="text-link left" data-view="bookmarksView">Lihat semua bookmark →</button><div class="watermark-icon">♧</div></article>
-              <article class="summary-card weakest-card"><div class="card-head"><span>Modul Terlemah</span><span class="info-dot">i</span></div><strong id="weakestModule">Belum ada data</strong><p id="weakestDetail">Kerjakan beberapa soal untuk mendapatkan rekomendasi.</p><button class="text-link left" id="weakestStartBtn">Mulai latihan →</button><div class="watermark-icon teal">⚖</div></article>
+              <article class="summary-card accuracy-card">
+                <div class="card-head"><span>Akurasi Kamu</span><span class="info-dot">i</span></div>
+                <div class="accuracy-main"><strong id="dashboardAccuracy">0%</strong><span id="accuracyDelta">Mulai latihan untuk membangun data.</span></div>
+                <div class="thin-progress"><span id="accuracyProgress"></span></div>
+                <div id="miniTrend" class="mini-chart" aria-hidden="true"></div>
+              </article>
+              <article class="summary-card">
+                <div class="card-head"><span>Soal Difavoritkan</span><span class="info-dot">i</span></div>
+                <div class="big-stat"><strong id="bookmarkCount">0</strong><span>Soal</span></div>
+                <button class="text-link left" data-view="bookmarksView">Lihat semua bookmark →</button>
+                <div class="watermark-icon">♧</div>
+              </article>
+              <article class="summary-card weakest-card">
+                <div class="card-head"><span>Modul Terlemah</span><span class="info-dot">i</span></div>
+                <strong id="weakestModule">Belum ada data</strong>
+                <p id="weakestDetail">Kerjakan beberapa soal untuk mendapatkan rekomendasi.</p>
+                <button class="text-link left" id="weakestStartBtn">Mulai latihan →</button>
+                <div class="watermark-icon teal">⚖</div>
+              </article>
             </div>
           </section>
         </section>
 
+        <!-- QUIZ SETUP -->
         <section id="quizSetupView" class="view">
           <div class="page-heading"><div><span class="eyebrow">Quiz Setup</span><h1>Atur Sesi Latihan</h1><p>Pilih modul, mode, jumlah soal, lalu mulai.</p></div></div>
           <div class="setup-layout">
-            <section class="surface setup-main"><div class="section-title-row"><div><h2>Pilih Materi</h2><p>Bisa satu modul atau kombinasi beberapa modul.</p></div><button id="selectAllBtn" class="text-link">Pilih semua</button></div><div class="setup-day-row"><span class="field-label">Filter Hari</span><div id="setupDayTabs" class="day-tabs compact-tabs"></div></div><div id="moduleGrid" class="setup-module-grid"></div></section>
+            <section class="surface setup-main">
+              <div class="section-title-row"><div><h2>Pilih Materi</h2><p>Bisa satu modul atau kombinasi beberapa modul.</p></div><button id="selectAllBtn" class="text-link">Pilih semua</button></div>
+              <div class="setup-day-row"><span class="field-label">Filter Hari</span><div id="setupDayTabs" class="day-tabs compact-tabs"></div></div>
+              <div id="moduleGrid" class="setup-module-grid"></div>
+            </section>
             <aside class="surface setup-side">
-              <h2>Pengaturan Sesi</h2><label class="field-label">Mode</label><div class="segmented" id="modeSelector"><button class="segment active" data-mode="practice">Practice</button><button class="segment" data-mode="exam">Exam</button></div><p class="field-help" id="modeHelp">Feedback + pembahasan muncul langsung setelah menjawab.</p>
-              <label class="field-label" for="questionCount">Jumlah soal</label><select id="questionCount" class="select-input"><option value="10">10 soal</option><option value="25">25 soal</option><option value="50" selected>50 soal</option><option value="all">Semua soal terpilih</option></select>
-              <label class="field-label">Randomisasi</label><label class="toggle-row"><span>Acak urutan soal</span><input type="checkbox" id="shuffleQuestions"><i></i></label><label class="toggle-row"><span>Acak pilihan jawaban</span><input type="checkbox" id="shuffleOptions" checked><i></i></label>
+              <h2>Pengaturan Sesi</h2>
+              <label class="field-label">Mode</label>
+              <div class="segmented" id="modeSelector"><button class="segment active" data-mode="practice">Practice</button><button class="segment" data-mode="exam">Exam</button></div>
+              <p class="field-help" id="modeHelp">Feedback + pembahasan muncul langsung setelah menjawab.</p>
+              <label class="field-label" for="questionCount">Jumlah soal</label>
+              <select id="questionCount" class="select-input"><option value="10">10 soal</option><option value="25">25 soal</option><option value="50" selected>50 soal</option><option value="all">Semua soal terpilih</option></select>
+              <label class="field-label">Randomisasi</label>
+              <label class="toggle-row"><span>Acak urutan soal</span><input type="checkbox" id="shuffleQuestions"><i></i></label>
+              <label class="toggle-row"><span>Acak pilihan jawaban</span><input type="checkbox" id="shuffleOptions" checked><i></i></label>
               <button id="startQuizBtn" class="btn btn-primary full">Mulai Latihan <span>→</span></button>
             </aside>
           </div>
         </section>
 
+        <!-- QUIZ -->
         <section id="quizView" class="view quiz-page">
           <div class="breadcrumb"><button data-view="dashboardView" id="breadcrumbDay">Day 1</button><span>›</span><button data-view="quizSetupView">Quiz</button><span>›</span><strong id="breadcrumbModule">Semua Modul</strong></div>
-          <section class="quiz-status surface"><div><strong id="quizModeTitle">Practice Mode</strong><small id="quizModeSubtitle">Belajar santai tanpa tekanan</small></div><div class="quiz-progress-block"><div class="status-label"><strong id="questionCounter">Soal 1 dari 50</strong><span id="progressPercent">0%</span></div><div class="progress-track"><span id="progressBar"></span></div></div><div class="status-metric"><span class="clock-icon">◷</span><div><small id="timeLabel">Waktu</small><strong id="timerText">00:00</strong></div></div><div class="status-metric"><div><small>Skor Sementara</small><strong class="score-live" id="liveScore">0%</strong><span id="liveCorrect">0 benar</span></div></div></section>
+          <section class="quiz-status surface">
+            <div><strong id="quizModeTitle">Practice Mode</strong><small id="quizModeSubtitle">Belajar santai tanpa tekanan</small></div>
+            <div class="quiz-progress-block"><div class="status-label"><strong id="questionCounter">Soal 1 dari 10</strong><span id="progressPercent">0%</span></div><div class="progress-track"><span id="progressBar"></span></div></div>
+            <div class="status-metric"><span class="clock-icon">◷</span><div><small id="timeLabel">Waktu</small><strong id="timerText">00:00</strong></div></div>
+            <div class="status-metric"><div><small>Skor Sementara</small><strong class="score-live" id="liveScore">0%</strong><span id="liveCorrect">0 benar</span></div></div>
+          </section>
+
           <div class="quiz-layout">
-            <article class="surface question-panel"><div class="question-heading-row"><span class="question-badge" id="questionBadge">Soal 1</span><button id="markQuestionBtn" class="inline-action">♧ Tandai soal</button></div><h2 id="questionText"></h2><div id="optionsList" class="answer-list"></div><div id="feedbackBox" class="feedback-panel hidden"></div><div class="explanation-accordion"><button id="explanationToggle"><span>▤</span><div><strong>Catatan & Pembahasan</strong><small id="explanationHint">Buka setelah menjawab untuk melihat penjelasan dan materi terkait.</small></div><b>⌄</b></button><div id="notePanel" class="note-panel hidden"><textarea id="questionNote" placeholder="Tulis catatan singkat untuk soal ini..."></textarea><div class="note-actions"><small>Catatan tersimpan lokal di browser.</small><button id="saveNoteBtn" class="btn btn-soft">Simpan Catatan</button></div></div></div></article>
-            <aside class="quiz-side-column"><section class="surface module-info-card"><div class="module-info-head"><span class="module-icon" id="quizModuleIcon">🏦</span><div><strong id="moduleTag">Semua Modul</strong><small id="modulePosition">Day 1</small></div></div><hr><small>Tingkat Kesulitan</small><div class="difficulty-row"><span id="difficultyDots"></span><strong id="difficultyTag">Mudah</strong></div><div class="two-actions"><button id="bookmarkBtn" class="btn btn-soft">♧ Bookmark</button><button id="openNoteBtn" class="btn btn-soft">▤ Catatan</button></div></section><section class="surface navigator-card"><h3>Navigasi Soal</h3><div class="navigator-legend"><span><i class="done"></i>Dijawab</span><span><i class="current"></i>Saat ini</span><span><i></i>Belum</span><span><i class="flagged"></i>Ditandai</span></div><div id="questionNavigator" class="question-navigator"></div><div class="tip-box"><span>💡</span><div><strong>Tip</strong><p>Kalau ragu, tandai dulu. Review semua soal yang ditandai sebelum selesai.</p></div></div></section></aside>
+            <article class="surface question-panel">
+              <div class="question-heading-row"><span class="question-badge" id="questionBadge">Soal 1</span><button id="markQuestionBtn" class="inline-action">♧ Tandai soal</button></div>
+              <h2 id="questionText"></h2>
+              <div id="optionsList" class="answer-list"></div>
+              <div id="feedbackBox" class="feedback-panel hidden"></div>
+              <div class="explanation-accordion">
+                <button id="explanationToggle"><span>▤</span><div><strong>Catatan & Pembahasan</strong><small id="explanationHint">Buka setelah menjawab untuk melihat penjelasan dan materi terkait.</small></div><b>⌄</b></button>
+                <div id="notePanel" class="note-panel hidden"><textarea id="questionNote" placeholder="Tulis catatan singkat untuk soal ini..."></textarea><div class="note-actions"><small>Catatan tersimpan lokal di browser.</small><button id="saveNoteBtn" class="btn btn-soft">Simpan Catatan</button></div></div>
+              </div>
+            </article>
+
+            <aside class="quiz-side-column">
+              <section class="surface module-info-card"><div class="module-info-head"><span class="module-icon" id="quizModuleIcon">🏦</span><div><strong id="moduleTag">Semua Modul</strong><small id="modulePosition">Day 1</small></div></div><hr><small>Tingkat Kesulitan</small><div class="difficulty-row"><span id="difficultyDots"></span><strong id="difficultyTag">Mudah</strong></div><div class="two-actions"><button id="bookmarkBtn" class="btn btn-soft">♧ Bookmark</button><button id="openNoteBtn" class="btn btn-soft">▤ Catatan</button></div></section>
+              <section class="surface navigator-card"><h3>Navigasi Soal</h3><div class="navigator-legend"><span><i class="done"></i>Dijawab</span><span><i class="current"></i>Saat ini</span><span><i></i>Belum</span><span><i class="flagged"></i>Ditandai</span></div><div id="questionNavigator" class="question-navigator"></div><div class="tip-box"><span>💡</span><div><strong>Tip</strong><p>Kalau ragu, tandai dulu. Review semua soal yang ditandai sebelum selesai.</p></div></div></section>
+            </aside>
           </div>
+
           <div class="quiz-bottom-nav"><button id="prevBtn" class="btn btn-outline">← Sebelumnya</button><button id="skipBtn" class="btn btn-outline">Lewati</button><button id="nextBtn" class="btn btn-primary">Selanjutnya →</button></div>
         </section>
 
+        <!-- RESULT -->
         <section id="resultView" class="view">
-          <section class="result-hero"><div class="result-illustration">✓</div><div class="result-copy"><span>SELESAI</span><h1>Hasil Quiz</h1><p id="resultMessage">Sesi selesai. Lihat detail performa dan fokus latihan berikutnya.</p><div class="result-date" id="resultDate"></div></div><div class="result-score-block"><small>Skor Akhir</small><strong id="resultScore">0<span>/100</span></strong><div id="resultBadge" class="result-badge">Mulai lagi</div></div><div class="result-donut" id="resultDonut"><span id="resultAccuracy">0%</span><small>Akurasi</small></div></section>
+          <section class="result-hero">
+            <div class="result-illustration">✓</div>
+            <div class="result-copy"><span>SELESAI</span><h1>Hasil Quiz</h1><p id="resultMessage">Sesi selesai. Lihat detail performa dan fokus latihan berikutnya.</p><div class="result-date" id="resultDate"></div></div>
+            <div class="result-score-block"><small>Skor Akhir</small><strong id="resultScore">0<span>/100</span></strong><div id="resultBadge" class="result-badge">Mulai lagi</div></div>
+            <div class="result-donut" id="resultDonut"><span id="resultAccuracy">0%</span><small>Akurasi</small></div>
+          </section>
           <div class="result-stats"><article><span class="stat-round green">✓</span><div><small>Benar</small><strong id="resultCorrect">0</strong></div></article><article><span class="stat-round red">×</span><div><small>Salah</small><strong id="resultWrong">0</strong></div></article><article><span class="stat-round orange">○</span><div><small>Dilewati</small><strong id="resultSkipped">0</strong></div></article><article><span class="stat-round purple">◷</span><div><small>Waktu Pengerjaan</small><strong id="resultTime">0m 0d</strong></div></article></div>
-          <div class="results-grid"><section class="surface result-review-card"><div class="section-title-row compact"><h2>Review Jawaban</h2><button class="text-link" id="openFullReview">Lihat Semua Review</button></div><div id="reviewPreview" class="review-preview"></div></section><section class="surface module-result-card"><div class="section-title-row compact"><h2>Performa per Modul</h2></div><div id="resultModulePerformance"></div></section></div>
+          <div class="results-grid">
+            <section class="surface result-review-card"><div class="section-title-row compact"><h2>Review Jawaban</h2><button class="text-link" id="openFullReview">Lihat Semua Review</button></div><div id="reviewPreview" class="review-preview"></div></section>
+            <section class="surface module-result-card"><div class="section-title-row compact"><h2>Performa per Modul</h2></div><div id="resultModulePerformance"></div></section>
+          </div>
           <section class="section-block"><div class="section-title-row compact"><h2>Insight Performa</h2></div><div id="resultInsights" class="insight-grid"></div></section>
           <section class="section-block"><div class="section-title-row compact"><h2>Rekomendasi Belajar Berikutnya</h2></div><div class="recommendations"><button class="recommend blue" id="retryWrongBtn"><span>↻</span><div><strong>Ulangi Soal Salah</strong><small>Perkuat konsep yang belum tepat di sesi ini.</small></div><b>→</b></button><button class="recommend orange" id="resultWeaknessBtn"><span>◎</span><div><strong>Weakness Drill</strong><small>Latihan dari akumulasi soal yang sering salah.</small></div><b>→</b></button><button class="recommend green" id="backHomeBtn"><span>⚑</span><div><strong>Kembali ke Dashboard</strong><small>Lihat progress dan pilih sesi berikutnya.</small></div><b>→</b></button></div></section>
         </section>
 
-        <section id="reviewView" class="view"><div class="page-heading"><div><span class="eyebrow">Review</span><h1>Riwayat & Jawaban</h1><p>Pelajari kembali soal dari sesi terakhir dan riwayat latihan.</p></div></div><section class="surface"><div class="section-title-row"><div><h2>Review Sesi Terakhir</h2><p id="reviewLastMeta">Belum ada sesi.</p></div><select id="reviewFilter" class="mini-select"><option value="all">Semua</option><option value="wrong">Salah</option><option value="correct">Benar</option><option value="skipped">Dilewati</option></select></div><div id="reviewList" class="full-review-list"></div></section></section>
-        <section id="bookmarksView" class="view"><div class="page-heading"><div><span class="eyebrow">Bookmarks</span><h1>Soal Ditandai</h1><p>Kumpulan soal yang ingin kamu buka lagi nanti.</p></div></div><section class="surface"><div id="bookmarksList" class="bookmark-list"></div></section></section>
-        <section id="statisticsView" class="view"><div class="page-heading"><div><span class="eyebrow">Statistik</span><h1>Performa Belajar</h1><p>Lihat akurasi, intensitas latihan, dan kelemahan per modul.</p></div></div><div id="statisticsCards" class="stat-big-grid"></div><section class="surface stats-module-surface"><div class="section-title-row compact"><h2>Akurasi per Modul</h2></div><div id="performanceList" class="performance-list"></div></section><section class="surface history-surface"><div class="section-title-row compact"><h2>Riwayat Sesi</h2></div><div id="historyList" class="history-list"></div></section></section>
-        <section id="settingsView" class="view"><div class="page-heading"><div><span class="eyebrow">Settings</span><h1>Pengaturan</h1><p>Preferensi disimpan di perangkat ini.</p></div></div><div class="settings-grid"><section class="surface settings-card"><h2>Tampilan</h2><p>Gunakan tema terang atau gelap sesuai kenyamanan.</p><button id="settingsThemeBtn" class="btn btn-soft">Ganti Tema</button></section><section class="surface settings-card danger-zone"><h2>Reset Progress</h2><p>Menghapus statistik, riwayat, weakness list, bookmark, dan catatan lokal.</p><button id="resetStatsBtn" class="btn btn-danger">Reset Semua Data</button></section></div></section>
+        <!-- REVIEW -->
+        <section id="reviewView" class="view">
+          <div class="page-heading"><div><span class="eyebrow">Review</span><h1>Riwayat & Jawaban</h1><p>Pelajari kembali soal dari sesi terakhir dan riwayat latihan.</p></div></div>
+          <section class="surface"><div class="section-title-row"><div><h2>Review Sesi Terakhir</h2><p id="reviewLastMeta">Belum ada sesi.</p></div><select id="reviewFilter" class="mini-select"><option value="all">Semua</option><option value="wrong">Salah</option><option value="correct">Benar</option><option value="skipped">Dilewati</option></select></div><div id="reviewList" class="full-review-list"></div></section>
+        </section>
+
+        <!-- BOOKMARKS -->
+        <section id="bookmarksView" class="view">
+          <div class="page-heading"><div><span class="eyebrow">Bookmarks</span><h1>Soal Ditandai</h1><p>Kumpulan soal yang ingin kamu buka lagi nanti.</p></div></div>
+          <section class="surface"><div id="bookmarksList" class="bookmark-list"></div></section>
+        </section>
+
+        <!-- STATISTICS -->
+        <section id="statisticsView" class="view">
+          <div class="page-heading"><div><span class="eyebrow">Statistik</span><h1>Performa Belajar</h1><p>Lihat akurasi, intensitas latihan, dan kelemahan per modul.</p></div></div>
+          <div id="statisticsCards" class="stat-big-grid"></div>
+          <section class="surface stats-module-surface"><div class="section-title-row compact"><h2>Akurasi per Modul</h2></div><div id="performanceList" class="performance-list"></div></section>
+          <section class="surface history-surface"><div class="section-title-row compact"><h2>Riwayat Sesi</h2></div><div id="historyList" class="history-list"></div></section>
+        </section>
+
+        <!-- SETTINGS -->
+        <section id="settingsView" class="view">
+          <div class="page-heading"><div><span class="eyebrow">Settings</span><h1>Pengaturan</h1><p>Preferensi disimpan di perangkat ini.</p></div></div>
+          <div class="settings-grid">
+            <section class="surface settings-card"><h2>Tampilan</h2><p>Gunakan tema terang atau gelap sesuai kenyamanan.</p><button id="settingsThemeBtn" class="btn btn-soft">Ganti Tema</button></section>
+            <section class="surface settings-card danger-zone"><h2>Reset Progress</h2><p>Menghapus statistik, riwayat, weakness list, bookmark, dan catatan lokal.</p><button id="resetStatsBtn" class="btn btn-danger">Reset Semua Data</button></section>
+          </div>
+        </section>
       </main>
+
       <footer class="footer">Data tersimpan lokal di perangkat ini</footer>
     </div>
   </div>
-  <div id="toast" class="toast hidden"></div><div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
-  <script src="js/questions.js?v=2026.08.21.1113"></script>
-  <script src="js/v5-patch.js?v=2026.08.21.1113"></script>
-  <script src="js/app.js?v=2026.08.21.1113"></script>
+
+  <div id="toast" class="toast hidden"></div>
+  <div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
+  <script src="js/questions.js?v=2026.08.21.1249"></script>
+  <script src="js/bridge-module.js?v=2026.08.21.1249"></script>
+  <script src="js/v5-patch.js?v=2026.08.21.1249"></script>
+  <script src="js/v7-no-repeat.js?v=2026.08.21.1249"></script>
+  <script src="js/app.js?v=2026.08.21.1249"></script>
 </body>
 </html>
