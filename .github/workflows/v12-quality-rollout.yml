@@ -1,0 +1,29 @@
+name: V12 concise quality rollout
+on:
+  push:
+    paths:
+      - '.github/workflows/v12-quality-rollout.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          old='2026.08.21.1708'; new='2026.08.21.1724'
+          p=Path('index.html'); s=p.read_text().replace(old,new)
+          s=s.replace(f'<script src="js/v10-db-bank.js?v={new}"></script>',f'<script src="js/v12-db-bank.js?v={new}"></script>')
+          p.write_text(s)
+          Path('version.json').write_text(json.dumps({'build':new,'forceCacheReset':True},separators=(',',':')))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html version.json
+          git diff --cached --quiet || git commit -m "Activate V12 concise unique question engine"
+          git push
