@@ -79,11 +79,35 @@
     return {...varied,id:`BANK-M${mid}-E${epoch}-S${slot}`,source:`${base.source} · Bank ${slot}/${BANK_SIZE}`,difficulty:base.difficulty,generated:true,bankSlot:slot,bankEpoch:epoch,baseId:base.id};
   }
 
+  function ensureDefaultPools(){
+    let changed=false;
+    moduleIds.forEach(mid=>{
+      let st=getState(mid);
+      if(st.active.length===ACTIVE_LIMIT)return;
+
+      if(st.active.length>ACTIVE_LIMIT)st.active=st.active.slice(0,ACTIVE_LIMIT);
+      const needed=ACTIVE_LIMIT-st.active.length;
+      if(needed<=0){BANK_STATE[String(mid)]=st;changed=true;return}
+
+      if(BANK_SIZE-st.seen.length<needed)st={epoch:st.epoch+1,seen:[],active:[]};
+      const seen=new Set(st.seen),activeSet=new Set(st.active);
+      const fill=[];
+      for(let slot=1;slot<=BANK_SIZE&&fill.length<ACTIVE_LIMIT-st.active.length;slot++){
+        if(!seen.has(slot)&&!activeSet.has(slot))fill.push(slot);
+      }
+      st.active=[...st.active,...fill].slice(0,ACTIVE_LIMIT);
+      st.seen=[...new Set([...st.seen,...st.active])];
+      BANK_STATE[String(mid)]=st;
+      changed=true;
+    });
+    if(changed)localStorage.setItem(BANK_KEY,JSON.stringify(BANK_STATE));
+  }
+
   function applyActivePool(){
     const next=[];
     moduleIds.forEach(mid=>{
       const st=getState(mid);
-      const pool=st.active.length?st.active.slice(0,ACTIVE_LIMIT).map(slot=>bankQuestion(mid,slot,st.epoch)).filter(Boolean):basePool(mid).slice(0,ACTIVE_LIMIT);
+      const pool=st.active.slice(0,ACTIVE_LIMIT).map(slot=>bankQuestion(mid,slot,st.epoch)).filter(Boolean);
       next.push(...learningOrder(pool));
     });
     const target=window.QUESTION_BANK||[];target.splice(0,target.length,...next);
@@ -161,8 +185,9 @@
     box.querySelector('button').onclick=()=>{if(confirm('Generate 50 soal baru? Progress pengerjaan modul ini akan direset dan soal aktif sekarang akan diganti.'))generate(mid)};
   }
 
+  ensureDefaultPools();
   applyActivePool();
-  // Modul dipelajari berurutan: mudah/ringkas lebih dulu. User tetap bisa mengaktifkan randomisasi manual dari Quiz Setup.
+  // Semua modul selalu punya 50 soal aktif secara default. Modul dipelajari berurutan: mudah/ringkas lebih dulu.
   const shuffleToggle=document.getElementById('shuffleQuestions');if(shuffleToggle)shuffleToggle.checked=false;
   track(location.pathname.includes('/khusus/')?'bridge_open':'page_view');
   setInterval(()=>track('heartbeat'),45000);
