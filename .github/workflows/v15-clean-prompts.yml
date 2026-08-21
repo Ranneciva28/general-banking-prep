@@ -1,0 +1,63 @@
+name: V15 clean prompts
+on:
+  push:
+    paths:
+      - '.github/workflows/v15-clean-prompts.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,re
+          src=Path('js/v14-db-bank.js').read_text()
+          s=src.replace("const STATE_KEY='gbpDbBankV14';","const STATE_KEY='gbpDbBankV15';")
+          s=s.replace("type-v14:","type-v15:").replace("facet-v14:","facet-v15:").replace("base-v14:","base-v15:").replace("case-v14:","case-v15:")
+          s=s.replace('DB-M${mid}-V14-S${slot}','DB-M${mid}-V15-S${slot}').replace("engine:'v14'","engine:'v15'")
+
+          old_except=re.compile(r"  function exceptQ\(base,mid,slot\)\{.*?\n  \}\n\n  function causeQ",re.S)
+          new_except="""  function exceptQ(base,mid,slot){
+    const raw=clean(base.question);
+    // Kalau source sudah berupa pertanyaan langsung / fill-in prompt, jangan tambahkan pertanyaan kedua.
+    if(raw.includes('?')||/\.{2,}\s*$/.test(raw)||/\b(disebut|adalah|merupakan|berapa|apa|siapa|kapan|dimana|mengapa|bagaimana|manakah)\b/i.test(raw)){
+      return normalQ(base,mid,slot);
+    }
+    const context=naturalContext(base,190)||raw;
+    const tails=['Semua pilihan berikut tidak tepat, KECUALI:','Semua pernyataan berikut keliru, KECUALI:'];
+    return {...base,question:cap(`${context} ${tails[facetFor(mid,slot)%tails.length]}`),questionType:'Kecuali'};
+  }
+
+  function causeQ"""
+          if not old_except.search(s): raise SystemExit('exceptQ block not found')
+          s=old_except.sub(new_except,s)
+
+          # Normal questions should preserve a valid source prompt rather than appending generic follow-up language.
+          old_normal=re.compile(r"  function normalQ\(base,mid,slot\)\{.*?\n  \}\n\n  function exceptQ",re.S)
+          new_normal="""  function normalQ(base,mid,slot){
+    const raw=clean(base.question),parts=concisePrompt(raw,190);
+    if(raw.length<=280&&(raw.includes('?')||/\.{2,}\s*$/.test(raw)))return {...base,question:cap(raw),questionType:'Pilihan Ganda'};
+    const {context,prompt}=parts;
+    if(context&&prompt)return {...base,question:cap(`${context} ${prompt}`),questionType:'Pilihan Ganda'};
+    return {...base,question:cap(prompt||raw),questionType:'Pilihan Ganda'};
+  }
+
+  function exceptQ"""
+          if not old_normal.search(s): raise SystemExit('normalQ block not found')
+          s=old_normal.sub(new_normal,s)
+
+          Path('js/v15-db-bank.js').write_text(s)
+          old='2026.08.21.1848'; new='2026.08.21.1859'
+          p=Path('index.html'); x=p.read_text().replace(old,new).replace('js/v14-db-bank.js','js/v15-db-bank.js');p.write_text(x)
+          Path('version.json').write_text(json.dumps({'build':new,'forceCacheReset':True},separators=(',',':')))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/v15-db-bank.js index.html version.json
+          git diff --cached --quiet || git commit -m "Preserve direct prompts without redundant follow-up questions"
+          git push
