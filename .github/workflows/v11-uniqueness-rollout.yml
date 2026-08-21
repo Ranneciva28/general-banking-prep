@@ -1,0 +1,66 @@
+name: V11 full uniqueness rollout
+on:
+  push:
+    paths:
+      - '.github/workflows/v11-uniqueness-rollout.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,re
+          js=Path('js/v10-db-bank.js')
+          s=js.read_text()
+          s=s.replace("const STATE_KEY='gbpDbBankV10';","const STATE_KEY='gbpDbBankV11';")
+          block="""  const roles=[
+    'Relationship manager','Petugas customer service','Analis operasional','Supervisor layanan','Pejabat cabang','Tim kepatuhan','Staf back office','Pimpinan unit kerja','Petugas teller','Petugas layanan nasabah','Petugas administrasi','Analis risiko','Tim bisnis','Petugas treasury','Analis kredit','Petugas trade finance','Tim akuntansi','Petugas KYC','Tim anti-fraud','Pengelola layanan digital','Auditor internal','Petugas funding','Petugas lending','Analis transaksi','Koordinator operasional','Manajer layanan','Reviewer kredit','Petugas settlement','Analis compliance','Tim kontrol internal','Petugas vault','Petugas dokumentasi','Pejabat pemutus','Tim quality assurance','Petugas rekonsiliasi','Analis produk','Petugas remittance','Tim legal','Petugas monitoring','Manajer risiko'
+  ];
+  const settings=[
+    'saat briefing pagi di cabang','ketika melakukan review transaksi','dalam evaluasi layanan nasabah','pada pemeriksaan dokumen','ketika memverifikasi data','dalam rapat operasional','saat menilai kebutuhan nasabah','ketika mengevaluasi risiko','dalam proses rekonsiliasi','saat menindaklanjuti transaksi','ketika menelaah permohonan','dalam review berkala','saat memeriksa kesesuaian prosedur','ketika melakukan analisis awal','dalam pembahasan kasus nasabah','saat menguji kontrol','ketika menilai kelengkapan informasi','dalam evaluasi keputusan','saat melakukan validasi','ketika menelaah hasil monitoring','dalam proses eskalasi','saat menyusun rekomendasi','ketika melakukan pengecekan silang','dalam sesi coaching tim','saat mengkaji temuan','ketika menilai opsi yang tersedia','dalam proses persetujuan','saat melakukan follow-up','ketika memeriksa anomali','dalam evaluasi akhir'
+  ];
+  const tasks=[
+    'harus menentukan langkah yang paling tepat','perlu memilih keputusan yang sesuai','diminta mengidentifikasi prinsip yang berlaku','harus menilai pilihan yang tersedia','perlu menetapkan respons yang benar','diminta menguji kesesuaian tindakan','harus membedakan alternatif yang mirip','perlu menentukan prioritas keputusan','diminta mengevaluasi implikasi tindakan','harus memastikan penerapan ketentuan yang tepat','perlu mengidentifikasi risiko utama','diminta menentukan perlakuan yang sesuai','harus memilih analisis yang paling akurat','perlu memutuskan tindakan lanjutan','diminta menilai kecukupan proses','harus menentukan kesimpulan yang tepat','perlu menguji pemahaman atas situasi','diminta membandingkan dua pendekatan','harus memilih opsi yang paling defensible','perlu menentukan respons operasional','diminta menilai kepatuhan tindakan','harus memeriksa konsistensi keputusan','perlu menentukan kontrol yang relevan','diminta memilih solusi yang paling sesuai','harus menilai dampak keputusan','perlu menetapkan tindakan mitigasi','diminta memeriksa kualitas keputusan','harus menentukan posisi yang tepat','perlu menilai fakta yang paling relevan','diminta memilih jawaban yang paling kuat'
+  ];
+  const qualifiers=[
+    'Fokus pada substansi kasus, bukan istilah kategorinya.','Gunakan informasi yang tersedia tanpa menambah asumsi baru.','Pilih jawaban yang paling konsisten dengan prinsip perbankan.','Utamakan ketepatan konsep dan urutan proses.','Perhatikan perbedaan kecil antarpilihan.','Gunakan logika operasional dan kepatuhan secara bersamaan.','Nilai opsi berdasarkan fakta yang disebutkan.','Hindari memilih jawaban hanya karena terdengar paling lengkap.','Pertimbangkan tujuan proses dan risiko yang muncul.','Gunakan alasan yang paling langsung menjawab persoalan.','Perhatikan siapa yang memiliki kewenangan dalam situasi tersebut.','Bedakan antara tujuan, prosedur, dan kontrol.','Pertimbangkan dampak keputusan terhadap nasabah dan bank.','Gunakan prinsip yang paling spesifik terhadap kondisi tersebut.','Pilih opsi yang paling tepat, bukan sekadar yang masih mungkin.','Perhatikan titik keputusan utama dalam kasus.','Nilai kesesuaian tindakan terhadap konteks yang diberikan.','Gunakan hubungan sebab dan akibat secara hati-hati.','Perhatikan apakah tindakan bersifat pencegahan, deteksi, atau koreksi.','Utamakan jawaban yang menjelaskan inti persoalan.'
+  ];
+  function lead(mid,slot){
+    const seed=hash(`lead-v11:${mid}:${slot}`);
+    const r=roles[Math.floor(rnd(seed,101)*roles.length)];
+    const st=settings[Math.floor(rnd(seed,102)*settings.length)];
+    const t=tasks[Math.floor(rnd(seed,103)*tasks.length)];
+    const q=qualifiers[Math.floor(rnd(seed,104)*qualifiers.length)];
+    const style=Math.floor(rnd(seed,105)*8);
+    if(style===0)return `${st}, ${r} ${t}. ${q}`;
+    if(style===1)return `${r} ${st} dan ${t}. ${q}`;
+    if(style===2)return `${st}, muncul situasi yang membuat ${r.toLowerCase()} ${t}. ${q}`;
+    if(style===3)return `${r} sedang bekerja ${st}. Dalam kondisi ini, ia ${t}. ${q}`;
+    if(style===4)return `Sebuah kasus muncul ${st}. ${r} ${t}. ${q}`;
+    if(style===5)return `Dalam kondisi ${st.replace(/^saat |^ketika |^dalam |^pada /,'')}, ${r} ${t}. ${q}`;
+    if(style===6)return `${st}, ${r} menemukan beberapa pilihan yang tampak sama-sama masuk akal. Ia ${t}. ${q}`;
+    return `${r} menghadapi keputusan ${st}. Ia ${t}. ${q}`;
+  }
+
+"""
+          s=re.sub(r"  const actors=\[.*?\n  const typeFor=",block+"  const typeFor=",s,flags=re.S)
+          s=s.replace("function payload(mid,slots){return slots.map(s=>{const q=question(mid,s);return{slot:s,question:q.question,options:q.options,answer:q.answer,explanation:q.explanation,source:q.source,baseId:q.baseId,questionType:q.questionType,difficulty:q.difficulty}})};","function payload(mid,slots){return slots.map(s=>{const q=question(mid,s),base=baseFor(mid,s),shape=hash(`shape-v11:${mid}:${s}`)%512;return{slot:s,question:q.question,options:q.options,answer:q.answer,explanation:q.explanation,source:q.source,baseId:q.baseId,questionType:q.questionType,difficulty:q.difficulty,structureKey:`${clean(base?.question||'')}|${q.questionType}|shape-${shape}`}})};")
+          s=re.sub(r"  async function ensureModule\(mid\)\{.*?\n  \}\n\n  function clearProgress", "  async function ensureModule(mid){\n    const st=getState(mid);\n    if(st.synced&&st.active.length===ACTIVE_LIMIT){replaceModule(mid,st.active);return st.active}\n    return reserveNew(mid,ACTIVE_LIMIT);\n  }\n\n  function clearProgress", s, flags=re.S)
+          s=s.replace("engine:'v10'","engine:'v11'")
+          s=s.replace("engine:'v10',bankSize","engine:'v11',bankSize")
+          js.write_text(s)
+          old='2026.08.21.1654'; new='2026.08.21.1708'
+          p=Path('index.html'); p.write_text(p.read_text().replace(old,new))
+          Path('version.json').write_text(json.dumps({'build':new,'forceCacheReset':True},separators=(',',':')))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/v10-db-bank.js index.html version.json
+          git diff --cached --quiet || git commit -m "Strengthen full uniqueness across all modules"
+          git push
