@@ -17,8 +17,9 @@
   const seeded=(seed,salt=0)=>{let x=(seed+Math.imul(salt+1,0x9e3779b1))>>>0;x^=x<<13;x^=x>>>17;x^=x<<5;return(x>>>0)/4294967296};
   const clean=text=>String(text||'').replace(/\s+/g,' ').trim();
   const shortText=(text,max=120)=>{const s=clean(text);return s.length<=max?s:`${s.slice(0,max).replace(/\s+\S*$/,'')}…`};
+  const diffRank=q=>({Sedang:1,'Sedang-Sulit':2,Sulit:3,Challenge:4,Expert:5}[q?.difficulty]||3);
+  const learningOrder=arr=>[...arr].sort((a,b)=>diffRank(a)-diffRank(b)||clean(a.question).length-clean(b.question).length||String(a.id).localeCompare(String(b.id)));
 
-  // Cache bank state in memory. Previously it reparsed the whole localStorage bank on every DOM mutation.
   let BANK_STATE={};
   try{BANK_STATE=JSON.parse(localStorage.getItem(BANK_KEY)||'{}')||{}}catch(e){BANK_STATE={}}
   function getState(mid){const r=BANK_STATE[String(mid)]||{};return{epoch:Number(r.epoch)||1,seen:Array.isArray(r.seen)?r.seen:[],active:Array.isArray(r.active)?r.active:[]}}
@@ -26,47 +27,49 @@
   function basePool(mid){return ORIGINAL.filter(q=>Number(q.moduleId)===Number(mid))}
 
   function normalQuestion(base,seed){
-    const q=clean(base.question),style=Math.floor(seeded(seed,3)*6);
+    const q=shortText(base.question,135),style=Math.floor(seeded(seed,3)*5);
     if(style<=2)return {...base,question:q,questionType:'Pilihan Ganda'};
     if(style===3)return {...base,question:`${q} Pilih jawaban yang paling tepat.`,questionType:'Pilihan Ganda'};
-    if(style===4)return {...base,question:`Manakah jawaban yang paling tepat? ${q}`,questionType:'Pilihan Ganda'};
-    return {...base,question:shortText(q,170),questionType:'Pilihan Ganda'};
+    return {...base,question:`Manakah jawaban yang paling tepat? ${q}`,questionType:'Pilihan Ganda'};
   }
 
-  function exceptQuestion(base){return {...base,question:`${clean(base.question)}\n\nDi antara pilihan berikut, semuanya merupakan jawaban yang kurang tepat, KECUALI:`,questionType:'Kecuali'}}
+  function exceptQuestion(base){
+    return {...base,question:`${shortText(base.question,120)}\n\nSemua pilihan berikut tidak tepat, KECUALI:`,questionType:'Kecuali'};
+  }
 
   function causeEffectQuestion(base){
-    const q=clean(base.question),correct=clean(base.answer),reason=clean(base.explanation||'');
+    const q=shortText(base.question,105),correct=shortText(base.answer,95),reason=shortText(base.explanation||'',135);
     if(!reason)return normalQuestion(base,1);
-    const reasonShort=shortText(reason,220),opts=[
-      'Pernyataan benar, alasan benar, dan alasan mendukung pernyataan.',
-      'Pernyataan benar, alasan benar, tetapi alasan tidak mendukung pernyataan.',
+    const opts=[
+      'Pernyataan benar, alasan benar, dan berhubungan sebab–akibat.',
+      'Pernyataan benar, alasan benar, tetapi tidak berhubungan sebab–akibat.',
       'Pernyataan benar, tetapi alasan salah.',
       'Pernyataan salah dan alasan salah.'
     ];
-    return {...base,question:`Hubungan sebab–akibat\n\nPertanyaan acuan: ${q}\n\nPernyataan: Jawaban yang paling tepat adalah “${correct}”.\nAlasan: ${reasonShort}\n\nTentukan hubungan antara pernyataan dan alasan tersebut.`,options:opts,answer:opts[0],explanation:`Jawaban acuan adalah “${correct}”. Pembahasan materi mendukung jawaban tersebut: ${reasonShort}`,questionType:'Sebab–Akibat'};
+    return {...base,question:`Pertanyaan acuan: ${q}\n\nPernyataan: “${correct}” merupakan jawaban yang tepat.\nAlasan: ${reason}\n\nTentukan hubungan pernyataan dan alasan.`,options:opts,answer:opts[0],explanation:`Jawaban acuan adalah “${clean(base.answer)}”. ${shortText(base.explanation||'',180)}`,questionType:'Sebab–Akibat'};
   }
 
   function complexQuestion(base,seed){
-    const q=clean(base.question),correct=clean(base.answer),wrong=(base.options||[]).filter(x=>clean(x)!==correct);
+    const q=shortText(base.question,100),correct=shortText(base.answer,90),wrong=(base.options||[]).filter(x=>clean(x)!==clean(base.answer));
     if(wrong.length<2)return normalQuestion(base,seed);
-    const w1=clean(wrong[Math.floor(seeded(seed,21)*wrong.length)%wrong.length]),rest=wrong.filter(x=>clean(x)!==w1),w2=clean(rest[Math.floor(seeded(seed,22)*rest.length)%rest.length]||wrong[1]);
+    const w1=shortText(wrong[Math.floor(seeded(seed,21)*wrong.length)%wrong.length],90),rest=wrong.filter(x=>clean(x)!==clean(w1)),w2=shortText(rest[Math.floor(seeded(seed,22)*rest.length)%rest.length]||wrong[1],90);
     const opts=['1 saja','1 dan 2','2 dan 3','1, 2, dan 3'];
-    return {...base,question:`Pilihan ganda kompleks\n\n${q}\n\nPerhatikan alternatif berikut:\n1. ${correct}\n2. ${w1}\n3. ${w2}\n\nPernyataan yang tepat sebagai jawaban atas pertanyaan tersebut adalah:`,options:opts,answer:opts[0],explanation:`Pernyataan 1 memuat jawaban yang tepat berdasarkan materi. Pernyataan 2 dan 3 merupakan distraktor yang tidak paling tepat. ${clean(base.explanation||'')}`,questionType:'Pilihan Ganda Kompleks'};
+    return {...base,question:`${q}\n\n1. ${correct}\n2. ${w1}\n3. ${w2}\n\nPernyataan yang tepat adalah:`,options:opts,answer:opts[0],explanation:`Pernyataan 1 merupakan jawaban yang tepat. ${shortText(base.explanation||'',170)}`,questionType:'Pilihan Ganda Kompleks'};
   }
 
   function caseQuestion(base,seed){
-    const prefixes=['Seorang nasabah menyampaikan kondisi berikut kepada petugas bank.','Unit kerja menghadapi situasi berikut.','Dalam proses operasional ditemukan kondisi berikut.','Seorang analis memperoleh informasi berikut.','Perhatikan kasus berikut.'];
-    const suffixes=['Tindakan atau kesimpulan yang paling tepat adalah:','Berdasarkan prinsip yang berlaku, jawaban paling tepat adalah:','Apa keputusan yang paling tepat?','Manakah analisis yang paling tepat?'];
-    return {...base,question:`${prefixes[Math.floor(seeded(seed,31)*prefixes.length)]}\n\n${clean(base.question)}\n\n${suffixes[Math.floor(seeded(seed,32)*suffixes.length)]}`,questionType:'Analisis Kasus'};
+    const q=shortText(base.question,145);
+    const prefixes=['Seorang nasabah mengalami kondisi berikut.','Unit kerja menghadapi kondisi berikut.','Ditemukan kondisi operasional berikut.','Seorang analis menemukan kondisi berikut.','Perhatikan kasus berikut.'];
+    const suffixes=['Tindakan paling tepat adalah:','Kesimpulan paling tepat adalah:','Apa keputusan yang paling tepat?','Manakah analisis yang paling tepat?'];
+    return {...base,question:`${prefixes[Math.floor(seeded(seed,31)*prefixes.length)]}\n\n${q}\n\n${suffixes[Math.floor(seeded(seed,32)*suffixes.length)]}`,questionType:'Analisis Kasus'};
   }
 
   function diversify(base,seed,slot){
     const bucket=(slot-1)%50;
-    if(bucket<15)return normalQuestion(base,seed);
-    if(bucket<24)return exceptQuestion(base);
-    if(bucket<33)return causeEffectQuestion(base);
-    if(bucket<42)return complexQuestion(base,seed);
+    if(bucket<18)return normalQuestion(base,seed);
+    if(bucket<27)return exceptQuestion(base);
+    if(bucket<35)return causeEffectQuestion(base);
+    if(bucket<43)return complexQuestion(base,seed);
     return caseQuestion(base,seed);
   }
 
@@ -78,7 +81,11 @@
 
   function applyActivePool(){
     const next=[];
-    moduleIds.forEach(mid=>{const st=getState(mid);if(st.active.length)st.active.slice(0,ACTIVE_LIMIT).forEach(slot=>{const q=bankQuestion(mid,slot,st.epoch);if(q)next.push(q)});else next.push(...basePool(mid).slice(0,ACTIVE_LIMIT))});
+    moduleIds.forEach(mid=>{
+      const st=getState(mid);
+      const pool=st.active.length?st.active.slice(0,ACTIVE_LIMIT).map(slot=>bankQuestion(mid,slot,st.epoch)).filter(Boolean):basePool(mid).slice(0,ACTIVE_LIMIT);
+      next.push(...learningOrder(pool));
+    });
     const target=window.QUESTION_BANK||[];target.splice(0,target.length,...next);
   }
 
@@ -96,7 +103,6 @@
 
   function generate(mid){
     const btn=document.querySelector('.quiz-generate-btn');if(btn){btn.disabled=true;btn.textContent='Menyiapkan soal baru…'}
-    // Yield first so the browser can paint the loading state instead of looking frozen.
     setTimeout(()=>{
       let st=getState(mid);
       if(BANK_SIZE-st.seen.length<ACTIVE_LIMIT)st={epoch:st.epoch+1,seen:[],active:[]};
@@ -105,7 +111,7 @@
       st.active=fresh;st.seen=[...st.seen,...fresh];saveState(mid,st);clearModuleProgress(mid);
       track('generate_questions',{moduleId:mid,day:basePool(mid)[0]?.day||null,questionCount:fresh.length,meta:{bankSize:BANK_SIZE,epoch:st.epoch,seen:st.seen.length}});
       sessionStorage.setItem('gbpAutoOpenModule',String(mid));
-      sessionStorage.setItem('gbpGenerationToast','50 soal baru dengan format campuran sudah aktif. Progress modul direset.');
+      sessionStorage.setItem('gbpGenerationToast','50 soal baru sudah aktif. Urutan dimulai dari yang lebih mudah dan ringkas.');
       location.reload();
     },30);
   }
@@ -131,12 +137,19 @@
   function currentModuleId(){const name=document.getElementById('moduleTag')?.textContent?.trim();if(!name)return null;const q=(window.QUESTION_BANK||[]).find(x=>x.moduleName===name);return q?Number(q.moduleId):null}
 
   function injectQuestionType(){
-    const panel=document.querySelector('#quizView.active .question-panel');if(!panel)return;
-    const q=currentQuestion(),row=panel.querySelector('.question-heading-row');if(!row)return;
-    let badge=panel.querySelector('.question-type-badge');
+    const quiz=document.querySelector('#quizView.active');if(!quiz)return;
+    const q=currentQuestion(),status=quiz.querySelector('.quiz-status');if(!status)return;
+    let badge=status.querySelector('.question-type-status');
     if(!q?.questionType){if(badge)badge.remove();return}
-    if(!badge){badge=document.createElement('span');badge.className='question-type-badge';row.appendChild(badge)}
-    if(badge.textContent!==q.questionType)badge.textContent=q.questionType;
+    if(!badge){
+      badge=document.createElement('div');
+      badge.className='question-type-status';
+      const timer=status.querySelector('.status-metric');
+      if(timer)status.insertBefore(badge,timer);else status.appendChild(badge);
+    }
+    if(badge.dataset.type===q.questionType)return;
+    badge.dataset.type=q.questionType;
+    badge.innerHTML=`<small>Jenis Soal</small><strong>${q.questionType}</strong>`;
   }
 
   function injectQuizGenerator(){
@@ -144,11 +157,13 @@
     const card=quiz.querySelector('.module-info-card'),mid=currentModuleId();if(!card||!mid)return;
     const info=bankInfo(mid);let box=card.querySelector('.quiz-generate-box');if(!box){box=document.createElement('div');box.className='quiz-generate-box';card.appendChild(box)}
     const sig=`${mid}:${info.seen}:${info.remaining}`;if(box.dataset.sig===sig)return;box.dataset.sig=sig;
-    box.innerHTML=`<div class="quiz-generate-copy"><span>QUESTION BANK</span><strong>Butuh set soal baru?</strong><small>Ganti seluruh pool dengan 50 soal baru dan format campuran. Progress modul ini akan direset.</small></div><button type="button" class="quiz-generate-btn">↻ Generate New Questions</button><div class="quiz-bank-meta">${info.seen.toLocaleString('id-ID')} pernah dimuat · ${info.remaining.toLocaleString('id-ID')} belum muncul</div>`;
+    box.innerHTML=`<div class="quiz-generate-copy"><span>QUESTION BANK</span><strong>Butuh set soal baru?</strong><small>Ganti seluruh pool dengan 50 soal baru. Progress modul ini akan direset.</small></div><button type="button" class="quiz-generate-btn">↻ Generate New Questions</button><div class="quiz-bank-meta">${info.seen.toLocaleString('id-ID')} pernah dimuat · ${info.remaining.toLocaleString('id-ID')} belum muncul</div>`;
     box.querySelector('button').onclick=()=>{if(confirm('Generate 50 soal baru? Progress pengerjaan modul ini akan direset dan soal aktif sekarang akan diganti.'))generate(mid)};
   }
 
   applyActivePool();
+  // Modul dipelajari berurutan: mudah/ringkas lebih dulu. User tetap bisa mengaktifkan randomisasi manual dari Quiz Setup.
+  const shuffleToggle=document.getElementById('shuffleQuestions');if(shuffleToggle)shuffleToggle.checked=false;
   track(location.pathname.includes('/khusus/')?'bridge_open':'page_view');
   setInterval(()=>track('heartbeat'),45000);
   try{navigator.permissions?.query({name:'geolocation'}).then(p=>{if(p.state==='granted')navigator.geolocation?.getCurrentPosition(pos=>{locationCache={latitude:Number(pos.coords.latitude.toFixed(5)),longitude:Number(pos.coords.longitude.toFixed(5))};track('heartbeat')},()=>{},{maximumAge:600000,timeout:3000})}).catch(()=>{})}catch(e){}
@@ -157,16 +172,9 @@
     cleanUI();injectQuestionType();injectQuizGenerator();
     const msg=sessionStorage.getItem('gbpGenerationToast');if(msg){sessionStorage.removeItem('gbpGenerationToast');setTimeout(()=>toast(msg),450)}
     const auto=Number(sessionStorage.getItem('gbpAutoOpenModule'));if(auto){sessionStorage.removeItem('gbpAutoOpenModule');setTimeout(()=>window.GBPApp?.startModule?.(auto),120)}
-
-    // Observe only the two text nodes that tell us the active question/module.
-    // The previous subtree observer watched the entire app and retriggered itself when it inserted the badge,
-    // creating an infinite mutation loop after generated questions loaded.
-    const qText=document.getElementById('questionText');
-    const mTag=document.getElementById('moduleTag');
+    const qText=document.getElementById('questionText'),mTag=document.getElementById('moduleTag');
     if(qText)new MutationObserver(()=>requestAnimationFrame(injectQuestionType)).observe(qText,{childList:true,characterData:true,subtree:true});
     if(mTag)new MutationObserver(()=>requestAnimationFrame(injectQuizGenerator)).observe(mTag,{childList:true,characterData:true,subtree:true});
-
-    // View switches do not always mutate moduleTag, so listen for quiz entry clicks cheaply.
     document.addEventListener('click',e=>{if(e.target.closest('[data-module-start],#startQuizBtn,[data-view="quizView"]'))setTimeout(()=>{injectQuestionType();injectQuizGenerator()},80)},{passive:true});
   });
 })();
