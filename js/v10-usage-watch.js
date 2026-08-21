@@ -18,7 +18,12 @@
         method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','apikey':KEY},
         body:JSON.stringify({
           p_client_id:clientId,p_module_id:Number(q.moduleId),p_requested_count:1,
-          p_questions:[{slot:Number(q.bankSlot),question:q.question,options:q.options,answer:q.answer,explanation:q.explanation,source:q.source,baseId:q.baseId,questionType:q.questionType||'Pilihan Ganda',difficulty:q.difficulty||'Sedang-Sulit'}]
+          p_questions:[{
+            slot:Number(q.bankSlot),question:q.question,options:q.options,answer:q.answer,
+            explanation:q.explanation,source:q.source,baseId:q.baseId,
+            questionType:q.questionType||'Pilihan Ganda',difficulty:q.difficulty||'Sedang-Sulit',
+            structureKey:q.structureKey||`${clean(q.question)}|${q.questionType||'Pilihan Ganda'}|shown`
+          }]
         })
       });
     }catch(e){}finally{busy=false}
