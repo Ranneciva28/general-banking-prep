@@ -22,7 +22,7 @@
             slot:Number(q.bankSlot),question:q.question,options:q.options,answer:q.answer,
             explanation:q.explanation,source:q.source,baseId:q.baseId,
             questionType:q.questionType||'Pilihan Ganda',difficulty:q.difficulty||'Sedang-Sulit',
-            structureKey:q.structureKey||`${clean(q.question)}|${q.questionType||'Pilihan Ganda'}|shown`
+            structureKey:q.structureKey||`${clean(q.question)}|${q.questionType||'Pilihan Ganda'}|${q.isLong?'long':'short'}|shown`
           }]
         })
       });
