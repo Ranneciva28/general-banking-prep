@@ -47,6 +47,9 @@
     const a=actors[n%actors.length];
     const b=actions[Math.floor(n/actors.length)%actions.length];
     const c=contexts[Math.floor(n/(actors.length*actions.length))%contexts.length];
+    // BRIDGE hanya nama kategori/modul, bukan bagian dari substansi pertanyaan.
+    // Modul 25 tetap memakai 5.000 kombinasi pembuka yang unik tanpa kata BRIDGE.
+    if(Number(mid)===25)return `${a} ${b} ${c}.`;
     return `${a} ${b} pada ${moduleTag(mid)} ${c}.`;
   }
 
