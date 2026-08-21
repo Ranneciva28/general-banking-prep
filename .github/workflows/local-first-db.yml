@@ -1,3 +1,4 @@
+# retrigger
 name: Local-first duplicate-safe bank
 on:
   push:
