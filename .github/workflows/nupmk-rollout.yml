@@ -1,0 +1,58 @@
+name: NUPMK rollout
+
+on:
+  push:
+    paths:
+      - '.github/workflows/nupmk-rollout.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch live site
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          build = '2026.08.21.1358'
+          p = Path('index.html')
+          s = p.read_text()
+          s = s.replace('2026.08.21.1249', build)
+          if 'js/nupmk-modules.js' not in s:
+              s = s.replace(
+                  f'<script src="js/bridge-module.js?v={build}"></script>',
+                  f'<script src="js/bridge-module.js?v={build}"></script>\n  <script src="js/nupmk-modules.js?v={build}"></script>'
+              )
+          if 'js/v8-global-no-repeat.js' not in s:
+              s = s.replace(
+                  f'<script src="js/v5-patch.js?v={build}"></script>',
+                  f'<script src="js/v5-patch.js?v={build}"></script>\n  <script src="js/v8-global-no-repeat.js?v={build}"></script>'
+              )
+          if 'js/nupmk-ui.js' not in s:
+              s = s.replace(
+                  f'<script src="js/app.js?v={build}"></script>',
+                  f'<script src="js/app.js?v={build}"></script>\n  <script src="js/nupmk-ui.js?v={build}"></script>'
+              )
+          p.write_text(s)
+
+          css = Path('css/v5.css')
+          c = css.read_text()
+          marker = '/* NUPMK category */'
+          if marker not in c:
+              c += '''\n\n/* NUPMK category */\n.nupmk-tab{min-width:176px!important}.nupmk-tab>span{font-weight:900}.nupmk-code{font-size:8px;font-weight:800;color:var(--muted);letter-spacing:.02em}.nupmk-module-card .module-card-top{gap:8px;align-items:center}.nupmk-module-card h3{min-height:48px}@media(max-width:720px){.nupmk-tab{min-width:158px!important}.nupmk-code{font-size:7px}}\n'''
+          css.write_text(c)
+
+          Path('version.json').write_text(json.dumps({'build': build, 'forceCacheReset': True}, separators=(',',':')))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html css/v5.css version.json
+          git diff --cached --quiet || git commit -m "Integrate NUPMK Unit Kompetensi category"
+          git push
