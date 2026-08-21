@@ -47,6 +47,10 @@
     if(!q.includes('?')&&q.length<=max)return q;
     return '';
   }
+  function isDirectPrompt(raw){
+    const q=clean(raw);
+    return q.includes('?')||/\.{2,}\s*$/.test(q)||/\b(disebut|berapa|apa|siapa|kapan|dimana|mengapa|bagaimana|manakah)\b/i.test(q);
+  }
 
   const clientId=(()=>{let x=localStorage.getItem(SESSION_KEY);if(!x){x=`${Date.now().toString(36)}-${crypto.getRandomValues(new Uint32Array(2)).join('-')}`;localStorage.setItem(SESSION_KEY,x)}return x})();
   let state={};try{state=JSON.parse(localStorage.getItem(STATE_KEY)||'{}')||{}}catch(e){state={}}
@@ -65,21 +69,18 @@
   }
 
   function normalQ(base,mid,slot){
-    const {context,prompt}=concisePrompt(base.question,190),f=facetFor(mid,slot)%5;
-    if(context){
-      const forms=[`${context} ${prompt}`,`${context} Berdasarkan kondisi tersebut, ${prompt.charAt(0).toLocaleLowerCase('id-ID')+prompt.slice(1)}`,`${context} Dalam kondisi ini, ${prompt.charAt(0).toLocaleLowerCase('id-ID')+prompt.slice(1)}`,`${context} ${prompt}`,`${context} ${prompt}`];
-      return {...base,question:cap(forms[f]),questionType:'Pilihan Ganda'};
-    }
-    const forms=[prompt,`Dalam praktik perbankan, ${prompt.charAt(0).toLocaleLowerCase('id-ID')+prompt.slice(1)}`,`Berdasarkan ketentuan yang berlaku, ${prompt.charAt(0).toLocaleLowerCase('id-ID')+prompt.slice(1)}`,prompt,prompt];
-    return {...base,question:cap(forms[f]),questionType:'Pilihan Ganda'};
+    const raw=clean(base.question),{context,prompt}=concisePrompt(raw,190);
+    if(raw.length<=280&&isDirectPrompt(raw))return {...base,question:cap(raw),questionType:'Pilihan Ganda'};
+    if(context&&prompt)return {...base,question:cap(`${context} ${prompt}`),questionType:'Pilihan Ganda'};
+    return {...base,question:cap(prompt||raw),questionType:'Pilihan Ganda'};
   }
 
   function exceptQ(base,mid,slot){
-    const context=naturalContext(base,190);
-    const tails=['Semua pilihan berikut tidak tepat, KECUALI:','Manakah satu pilihan yang benar?','Semua pernyataan berikut keliru, KECUALI:','Pilih satu pernyataan yang tepat:'];
-    const tail=tails[facetFor(mid,slot)%tails.length];
-    const lead=context?`${context} ${tail}`:`Terkait konsep yang diuji pada soal ini, ${tail.charAt(0).toLocaleLowerCase('id-ID')+tail.slice(1)}`;
-    return {...base,question:cap(lead),questionType:'Kecuali'};
+    const raw=clean(base.question);
+    if(isDirectPrompt(raw))return normalQ(base,mid,slot);
+    const context=naturalContext(base,190)||raw;
+    const tails=['Semua pilihan berikut tidak tepat, KECUALI:','Semua pernyataan berikut keliru, KECUALI:'];
+    return {...base,question:cap(`${context} ${tails[facetFor(mid,slot)%tails.length]}`),questionType:'Kecuali'};
   }
 
   function causeQ(base,mid,slot){
@@ -92,7 +93,8 @@
   }
 
   function caseQ(base,mid,slot){
-    const {context,prompt}=concisePrompt(base.question,175);
+    const raw=clean(base.question),{context,prompt}=concisePrompt(raw,175);
+    if(isDirectPrompt(raw))return {...base,question:cap(raw),questionType:'Analisis Kasus'};
     if(context)return {...base,question:cap(`${context} ${prompt}`),questionType:'Analisis Kasus'};
     const actors=['Seorang nasabah','Petugas layanan','Relationship manager','Analis kredit','Petugas operasional','Tim kepatuhan','Supervisor cabang','Petugas KYC'];
     const bridges=['menghadapi kondisi berikut','perlu mengambil keputusan atas kondisi berikut','menilai situasi berikut','harus menentukan tindakan berdasarkan kondisi berikut'];
@@ -101,8 +103,10 @@
   }
 
   function longQ(base,mid,slot){
-    const {context,prompt}=splitStem(base.question),reason=firstSentence(base.explanation||'');
-    const ctx=context||clean(base.question).replace(/\?$/,'');
+    const raw=clean(base.question);
+    if(isDirectPrompt(raw)&&raw.length<=500)return {...base,question:cap(raw),questionType:'Analisis Kasus'};
+    const {context,prompt}=splitStem(raw),reason=firstSentence(base.explanation||'');
+    const ctx=context||raw.replace(/\?$/,'');
     const extra=reason&&reason.length<=220&&!lower(ctx).includes(lower(reason).slice(0,35))?` ${reason}`:'';
     const finalPrompt=prompt||['Apa tindakan yang paling tepat?','Apa kesimpulan yang paling tepat?','Keputusan mana yang paling sesuai?'][facetFor(mid,slot)%3];
     return {...base,question:cap(`${ctx}${extra} ${finalPrompt}`),questionType:'Analisis Kasus'};
