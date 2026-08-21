@@ -4,21 +4,58 @@
   const TOKEN_KEY='cenaAnalyticsToken';
   const $=id=>document.getElementById(id);
   let timer=null;
-  const moduleNames={1:'Peran & Jenis Perbankan',2:'Produk & Jasa Dana',3:'Produk & Jasa Kredit',4:'Regulasi & Otoritas',5:'Business Ecosystem',6:'Future of Banking',7:'Informasi Produk & Jasa',8:'Edukasi Nasabah',9:'Pengaduan Nasabah',10:'Buka/Tutup Rekening',11:'Transaksi Tunai/Non Tunai',12:'Administrasi Perbankan',13:'Valuta Asing',14:'Trade Services & Finance',15:'Akuntansi Perusahaan',16:'Akuntansi Perbankan',17:'Risk Management & Culture',18:'Strategi Anti Fraud',19:'BCM & K3',20:'Pelindungan Data Pribadi',21:'KYC',22:'Aspek Hukum',23:'Three Lines of Defense',24:'APU/PPT/PPSPM'};
+  const moduleNames={1:'Peran & Jenis Perbankan',2:'Produk & Jasa Dana',3:'Produk & Jasa Kredit',4:'Regulasi & Otoritas',5:'Business Ecosystem',6:'Future of Banking',7:'Informasi Produk & Jasa',8:'Edukasi Nasabah',9:'Pengaduan Nasabah',10:'Buka/Tutup Rekening',11:'Transaksi Tunai/Non Tunai',12:'Administrasi Perbankan',13:'Valuta Asing',14:'Trade Services & Finance',15:'Akuntansi Perusahaan',16:'Akuntansi Perbankan',17:'Risk Management & Culture',18:'Strategi Anti Fraud',19:'BCM & K3',20:'Pelindungan Data Pribadi',21:'KYC',22:'Aspek Hukum',23:'Three Lines of Defense',24:'APU/PPT/PPSPM',25:'BRIDGE Module',26:'Pelayanan Informasi Produk & Jasa',27:'Edukasi Nasabah & Calon Nasabah',28:'Pengaduan Nasabah',29:'Pembukaan & Penutupan Rekening',30:'Transaksi Tunai & Non Tunai',31:'Administrasi Perbankan',32:'Valuta Asing',33:'Trade Service & Trade Finance',34:'Mengelola Akuntansi',35:'Aspek-Aspek Hukum'};
   const fmt=n=>Number(n||0).toLocaleString('id-ID');
   const dt=s=>s?new Intl.DateTimeFormat('id-ID',{dateStyle:'short',timeStyle:'medium',timeZone:'Asia/Jakarta'}).format(new Date(s)):'—';
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-  async function load(token){
-    const r=await fetch(`${URL}/rest/v1/rpc/gbp_admin_dashboard`,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY},body:JSON.stringify({p_token:token})});
-    if(!r.ok)throw new Error('unauthorized');
+  async function rpc(name,body={}){
+    const r=await fetch(`${URL}/rest/v1/rpc/${name}`,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','apikey':KEY},body:JSON.stringify(body)});
+    if(!r.ok)throw new Error(await r.text()||'request-failed');
     return r.json();
   }
-  function showDashboard(){ $('loginView').classList.add('hidden');$('dashboardView').classList.remove('hidden'); }
-  function showLogin(){ $('dashboardView').classList.add('hidden');$('loginView').classList.remove('hidden'); }
+  const load=token=>rpc('gbp_admin_dashboard',{p_token:token});
+  const loadCacheVersion=()=>rpc('gbp_cache_version',{});
+  const forceCacheClear=token=>rpc('gbp_admin_force_cache_clear',{p_token:token});
+
+  function ensureCacheControl(){
+    if($('forceCacheBtn'))return;
+    const header=document.querySelector('.dashboard main header');
+    if(!header)return;
+    const refresh=$('refreshBtn');
+    const actions=document.createElement('div');actions.className='admin-header-actions';
+    const force=document.createElement('button');force.type='button';force.id='forceCacheBtn';force.className='force-cache-btn';force.textContent='⚡ Force Clear Cache';
+    if(refresh){refresh.parentNode.insertBefore(actions,refresh);actions.appendChild(force);actions.appendChild(refresh)}else{header.appendChild(actions);actions.appendChild(force)}
+
+    const panel=document.createElement('section');panel.className='panel cache-control-panel';panel.innerHTML='<div><span class="eyebrow">GLOBAL CACHE CONTROL</span><h2>Paksa semua user menerima update terbaru</h2><p>Browser user akan mendeteksi cache epoch baru, menghapus browser cache dan Service Worker, lalu reload. Progress belajar dan riwayat soal tidak dihapus.</p></div><div class="cache-epoch-box"><small>Cache epoch</small><strong id="cacheEpoch">—</strong><span id="cacheUpdated">Belum dimuat</span></div>';
+    const kpis=document.querySelector('.kpis');if(kpis)kpis.parentNode.insertBefore(panel,kpis);
+    const notice=document.createElement('div');notice.id='cacheNotice';notice.className='cache-notice hidden';panel.after(notice);
+    force.addEventListener('click',handleForceCache);
+  }
+
+  async function refreshCacheStatus(){
+    try{const d=await loadCacheVersion();if($('cacheEpoch'))$('cacheEpoch').textContent=fmt(d.epoch);if($('cacheUpdated'))$('cacheUpdated').textContent=`Update ${dt(d.updated_at)}`}catch(e){if($('cacheUpdated'))$('cacheUpdated').textContent='Status cache gagal dimuat'}
+  }
+
+  async function handleForceCache(){
+    const token=sessionStorage.getItem(TOKEN_KEY);if(!token)return;
+    if(!confirm('Paksa seluruh user clear cache dan reload ke versi terbaru? Progress belajar user TIDAK akan dihapus.'))return;
+    const btn=$('forceCacheBtn'),notice=$('cacheNotice');
+    if(btn){btn.disabled=true;btn.textContent='Memproses…'}
+    try{
+      const d=await forceCacheClear(token);
+      if(notice){notice.className='cache-notice success';notice.textContent=`Force clear aktif. Cache epoch sekarang ${d.epoch}. User aktif akan menerima perintah reload maksimal sekitar 30 detik.`}
+      await refreshCacheStatus();
+    }catch(e){
+      if(notice){notice.className='cache-notice error-notice';notice.textContent='Force clear cache gagal. Coba login ulang atau refresh dashboard.'}
+    }finally{if(btn){btn.disabled=false;btn.textContent='⚡ Force Clear Cache'}}
+  }
+
+  function showDashboard(){$('loginView').classList.add('hidden');$('dashboardView').classList.remove('hidden');ensureCacheControl()}
+  function showLogin(){$('dashboardView').classList.add('hidden');$('loginView').classList.remove('hidden')}
   async function refresh(){
     const token=sessionStorage.getItem(TOKEN_KEY);if(!token)return showLogin();
-    try{const d=await load(token);showDashboard();render(d)}catch(e){sessionStorage.removeItem(TOKEN_KEY);showLogin();$('loginError').classList.remove('hidden')}
+    try{const d=await load(token);showDashboard();render(d);refreshCacheStatus()}catch(e){sessionStorage.removeItem(TOKEN_KEY);showLogin();$('loginError').classList.remove('hidden')}
   }
   function render(d){
     $('lastUpdated').textContent=`Terakhir diperbarui ${dt(d.generated_at)}`;$('activeUsers').textContent=fmt(d.active_users);$('active5m').textContent=fmt(d.active_5m);$('usersToday').textContent=fmt(d.unique_users_today);$('visitsToday').textContent=fmt(d.visits_today);$('quizzesToday').textContent=fmt(d.quizzes_today);$('generatedToday').textContent=fmt(d.generated_today);$('generatedAll').textContent=`${fmt(d.generated_total)} total`;
