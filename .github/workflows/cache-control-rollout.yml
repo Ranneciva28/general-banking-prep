@@ -1,0 +1,36 @@
+name: Cache control rollout
+on:
+  push:
+    paths:
+      - '.github/workflows/cache-control-rollout.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          old='2026.08.21.1418'; new='2026.08.21.1428'
+          p=Path('index.html'); s=p.read_text().replace(old,new)
+          marker=f'<script src="js/questions.js?v={new}"></script>'
+          cache=f'<script src="js/cache-control.js?v={new}"></script>'
+          if 'js/cache-control.js' not in s:
+              s=s.replace(marker,cache+'\n  '+marker)
+          p.write_text(s)
+          a=Path('cenaidja/index.html'); x=a.read_text()
+          x=x.replace('href="css/admin.css"',f'href="css/admin.css?v={new}"')
+          x=x.replace('src="js/admin.js"',f'src="js/admin.js?v={new}"')
+          a.write_text(x)
+          Path('version.json').write_text(json.dumps({'build':new,'forceCacheReset':True},separators=(',',':')))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html cenaidja/index.html version.json
+          git diff --cached --quiet || git commit -m "Activate admin force cache control"
+          git push
