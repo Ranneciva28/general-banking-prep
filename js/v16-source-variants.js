@@ -3,6 +3,15 @@
   if(!Array.isArray(bank)||!bank.length)return;
   const lowerFirst=s=>{s=String(s||'');return s?s.charAt(0).toLocaleLowerCase('id-ID')+s.slice(1):s};
   const normalize=s=>String(s||'').toLocaleLowerCase('id-ID').replace(/[^a-z0-9à-öø-ÿ]+/giu,' ').replace(/\s+/g,' ').trim();
+
+  try{
+    const MIGRATION='gbpStrictUniqueV16';
+    if(!localStorage.getItem(MIGRATION)){
+      localStorage.removeItem('gbpDbBankV14');
+      localStorage.setItem(MIGRATION,'1');
+    }
+  }catch(e){}
+
   const leads={
     1:['Dalam fungsi intermediasi,','Dalam kegiatan bank,','Dalam struktur perbankan,','Dalam peran bank terhadap ekonomi,'],
     2:['Dalam penghimpunan dana,','Pada produk simpanan,','Dalam pengelolaan dana nasabah,','Pada sisi funding bank,'],
