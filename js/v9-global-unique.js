@@ -8,7 +8,12 @@
   if(!SOURCE.length)return;
 
   const clean=s=>String(s||'').replace(/\s+/g,' ').trim();
-  const short=(s,n=102)=>{const x=clean(s);return x.length<=n?x:`${x.slice(0,n).replace(/\s+\S*$/,'')}…`};
+  const firstCompleteSentence=s=>{
+    const x=clean(s);
+    if(!x)return '';
+    const m=x.match(/^.*?[.!?](?=\s|$)/);
+    return m?m[0].trim():x;
+  };
   const hash=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
   const fp=q=>String(hash(clean(q?.question).toLowerCase()));
   const rnd=(seed,salt=0)=>{let x=(seed+Math.imul(salt+1,0x9e3779b1))>>>0;x^=x<<13;x^=x>>>17;x^=x<<5;return(x>>>0)/4294967296};
@@ -36,39 +41,84 @@
   const save=(mid,st)=>{STORE[String(mid)]={...(STORE[String(mid)]||{}),...st};localStorage.setItem(BANK_KEY,JSON.stringify(STORE))};
   const saveGlobal=()=>localStorage.setItem(GLOBAL_KEY,JSON.stringify([...globalSet]));
 
-  const openers=['','Pada layanan bank,','Dalam operasional bank,','Pada transaksi bank,','Dalam pengelolaan bank,','Pada pelayanan nasabah,','Dalam penerapan ketentuan,','Pada aktivitas cabang,'];
-  const closers=['','Pilih jawaban paling tepat.','Manakah jawaban yang benar?','Tentukan pilihan yang paling sesuai.','Manakah opsi yang paling tepat?'];
+  const closers=[
+    '',
+    'Pilih jawaban yang paling tepat.',
+    'Manakah jawaban yang benar?',
+    'Tentukan pilihan yang paling sesuai.',
+    'Manakah opsi yang paling tepat?',
+    'Pilih pernyataan yang benar.',
+    'Tentukan jawaban yang paling akurat.',
+    'Manakah pilihan yang paling sesuai dengan konsep tersebut?',
+    'Pilih alternatif yang paling tepat.',
+    'Tentukan jawaban yang benar berdasarkan konsep perbankan.'
+  ];
 
+  // IMPORTANT: question stems, answer choices, and case facts are NEVER character-truncated.
+  // Previous versions used a hard character cutoff and appended an ellipsis, which could
+  // leave cases ending mid-sentence. All generators below keep the complete source text.
   function normal(base,seed){
-    const p=openers[Math.floor(rnd(seed,2)*openers.length)],c=closers[Math.floor(rnd(seed,3)*closers.length)];
-    return {...base,question:`${p?`${p} `:''}${short(base.question,96)}${c?` ${c}`:''}`.trim(),questionType:'Pilihan Ganda'};
+    const q=clean(base.question),c=closers[Math.floor(rnd(seed,3)*closers.length)];
+    return {...base,question:`${q}${c?` ${c}`:''}`.trim(),questionType:'Pilihan Ganda'};
   }
   function exceptQ(base,seed){
-    const tails=['Semua pilihan berikut salah, KECUALI:','Pilih alternatif yang menjadi pengecualian:','Semua opsi berikut tidak tepat, KECUALI:','Manakah pilihan yang merupakan pengecualian?'];
-    return {...base,question:`${short(base.question,90)}\n\n${tails[Math.floor(rnd(seed,4)*tails.length)]}`,questionType:'Kecuali'};
+    const tails=[
+      'Semua pilihan berikut salah, KECUALI:',
+      'Pilih alternatif yang menjadi pengecualian:',
+      'Semua opsi berikut tidak tepat, KECUALI:',
+      'Manakah pilihan yang merupakan pengecualian?',
+      'Pilih satu opsi yang paling tepat sebagai pengecualian.'
+    ];
+    return {...base,question:`${clean(base.question)}\n\n${tails[Math.floor(rnd(seed,4)*tails.length)]}`,questionType:'Kecuali'};
   }
   function cause(base,seed){
-    const reason=short(base.explanation||'',92);if(!reason)return normal(base,seed);
-    const opts=['Pernyataan benar, alasan benar, dan berhubungan sebab–akibat.','Pernyataan benar, alasan benar, tetapi tidak berhubungan sebab–akibat.','Pernyataan benar, tetapi alasan salah.','Pernyataan salah dan alasan salah.'];
-    return {...base,question:`Tentukan hubungan pernyataan dan alasan.\n\nPernyataan: “${short(base.answer,62)}” tepat untuk “${short(base.question,66)}”.\nAlasan: ${reason}`,options:opts,answer:opts[0],explanation:`Jawaban acuan: “${clean(base.answer)}”. ${short(base.explanation||'',132)}`,questionType:'Sebab–Akibat'};
+    const reason=firstCompleteSentence(base.explanation||'');if(!reason)return normal(base,seed);
+    const opts=[
+      'Pernyataan benar, alasan benar, dan berhubungan sebab–akibat.',
+      'Pernyataan benar, alasan benar, tetapi tidak berhubungan sebab–akibat.',
+      'Pernyataan benar, tetapi alasan salah.',
+      'Pernyataan salah dan alasan salah.'
+    ];
+    return {
+      ...base,
+      question:`Tentukan hubungan pernyataan dan alasan.\n\nPernyataan: “${clean(base.answer)}” merupakan jawaban yang tepat untuk pertanyaan “${clean(base.question)}”.\nAlasan: ${reason}`,
+      options:opts,
+      answer:opts[0],
+      explanation:`Jawaban acuan: “${clean(base.answer)}”. ${clean(base.explanation||'')}`,
+      questionType:'Sebab–Akibat'
+    };
   }
   function complex(base,seed){
     const wrong=(base.options||[]).filter(x=>clean(x)!==clean(base.answer));if(wrong.length<2)return normal(base,seed);
-    const ci=1+Math.floor(rnd(seed,5)*3),w1=short(wrong[Math.floor(rnd(seed,6)*wrong.length)%wrong.length],58),rest=wrong.filter(x=>clean(x)!==clean(w1)),w2=short(rest[Math.floor(rnd(seed,7)*rest.length)%rest.length]||wrong[1],58),items=[w1,w2];
-    items.splice(ci-1,0,short(base.answer,58));
-    const answer=`${ci} saja`,all=['1 saja','2 saja','3 saja','1 dan 2','1 dan 3','2 dan 3','1, 2, dan 3'],d=all.filter(x=>x!==answer).map((x,i)=>({x,k:rnd(seed,20+i)})).sort((a,b)=>a.k-b.k).map(x=>x.x);
-    return {...base,question:`${short(base.question,70)}\n\n1. ${items[0]}\n2. ${items[1]}\n3. ${items[2]}\n\nPernyataan yang tepat adalah:`,options:[answer,...d.slice(0,3)],answer,explanation:`Pernyataan ${ci} tepat. ${short(base.explanation||'',118)}`,questionType:'Pilihan Ganda Kompleks'};
+    const ci=1+Math.floor(rnd(seed,5)*3);
+    const w1=clean(wrong[Math.floor(rnd(seed,6)*wrong.length)%wrong.length]);
+    const rest=wrong.filter(x=>clean(x)!==w1);
+    const w2=clean(rest[Math.floor(rnd(seed,7)*rest.length)%rest.length]||wrong[1]);
+    const items=[w1,w2];items.splice(ci-1,0,clean(base.answer));
+    const answer=`${ci} saja`,all=['1 saja','2 saja','3 saja','1 dan 2','1 dan 3','2 dan 3','1, 2, dan 3'];
+    const d=all.filter(x=>x!==answer).map((x,i)=>({x,k:rnd(seed,20+i)})).sort((a,b)=>a.k-b.k).map(x=>x.x);
+    return {
+      ...base,
+      question:`${clean(base.question)}\n\n1. ${items[0]}\n2. ${items[1]}\n3. ${items[2]}\n\nPernyataan yang tepat adalah:`,
+      options:[answer,...d.slice(0,3)],
+      answer,
+      explanation:`Pernyataan ${ci} tepat. ${clean(base.explanation||'')}`,
+      questionType:'Pilihan Ganda Kompleks'
+    };
   }
   function caseQ(base,seed){
-    const ps=['Seorang nasabah menghadapi situasi berikut.','Sebuah cabang menghadapi situasi berikut.','Ditemukan kondisi berikut.','Tim bank mengevaluasi situasi berikut.','Perhatikan kasus berikut.'],ss=['Tindakan paling tepat adalah:','Kesimpulan paling tepat adalah:','Apa keputusan yang tepat?','Manakah analisis terbaik?','Respons yang paling sesuai adalah:'];
-    return {...base,question:`${ps[Math.floor(rnd(seed,8)*ps.length)]}\n\n${short(base.question,88)}\n\n${ss[Math.floor(rnd(seed,9)*ss.length)]}`,questionType:'Analisis Kasus'};
+    const ps=['Perhatikan kasus berikut.','Cermati situasi berikut.','Analisis kondisi berikut.','Perhatikan situasi perbankan berikut.','Cermati kasus perbankan berikut.'];
+    const ss=['Tindakan paling tepat adalah:','Kesimpulan paling tepat adalah:','Apa keputusan yang tepat?','Manakah analisis terbaik?','Respons yang paling sesuai adalah:'];
+    return {...base,question:`${ps[Math.floor(rnd(seed,8)*ps.length)]}\n\n${clean(base.question)}\n\n${ss[Math.floor(rnd(seed,9)*ss.length)]}`,questionType:'Analisis Kasus'};
   }
 
   function question(mid,slot){
     const p=pool(mid);if(!p.length)return null;
     const seed=hash(`v9:${mid}:${slot}`),base=p[Math.floor(rnd(seed,1)*p.length)%p.length],t=typeFor(slot);
     const v=t==='normal'?normal(base,seed):t==='except'?exceptQ(base,seed):t==='cause'?cause(base,seed):t==='complex'?complex(base,seed):caseQ(base,seed);
-    return {...v,id:`BANK-M${mid}-V9-S${slot}`,source:`${base.source} · Bank ${slot}/${BANK_SIZE}`,generated:true,bankSlot:slot,bankEpoch:1,baseId:base.id};
+    // Safety net: generated stems are not allowed to contain our old truncation marker.
+    const stem=String(v.question||'').replace(/…/g,'.');
+    return {...v,question:stem,id:`BANK-M${mid}-V9-S${slot}`,source:`${base.source} · Bank ${slot}/${BANK_SIZE}`,generated:true,bankSlot:slot,bankEpoch:1,baseId:base.id};
   }
 
   function choose(mid,count,avoid=new Set(),existingSeen=[]){
@@ -145,6 +195,6 @@
 
   document.addEventListener('DOMContentLoaded',()=>{
     if(window.GBPQuestionBank){window.GBPQuestionBank.generate=generate;window.GBPQuestionBank.bankInfo=mid=>{const st=state(mid);return{active:st.active.length||50,seen:st.v9Seen.length,remaining:Math.max(0,BANK_SIZE-st.v9Seen.length)}}}
-    window.GBPGlobalNoRepeat={generate,bankSize:BANK_SIZE,engine:'v9'};
+    window.GBPGlobalNoRepeat={generate,bankSize:BANK_SIZE,engine:'v9-complete-stems'};
   });
 })();
