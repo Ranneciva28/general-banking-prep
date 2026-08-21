@@ -58,7 +58,7 @@
   const saveState=(mid,v)=>{state[String(mid)]={...getState(mid),...v};localStorage.setItem(STATE_KEY,JSON.stringify(state))};
 
   const isLongSlot=slot=>slot%10===0;
-  const typeFor=slot=>{const x=hash(`type-v14:${slot}`)%100;return x<45?'normal':x<65?'except':x<80?'cause':'case'};
+  const typeFor=slot=>{const x=hash(`type-v14:${slot}`)%100;return x<55?'normal':x<75?'except':'case'};
   const facetFor=(mid,slot)=>hash(`facet-v14:${mid}:${slot}`)%64;
   function baseFor(mid,slot){
     const all=pool(mid);if(!all.length)return null;
@@ -81,15 +81,6 @@
     const context=naturalContext(base,190)||raw;
     const tails=['Semua pilihan berikut tidak tepat, KECUALI:','Semua pernyataan berikut keliru, KECUALI:'];
     return {...base,question:cap(`${context} ${tails[facetFor(mid,slot)%tails.length]}`),questionType:'Kecuali'};
-  }
-
-  function causeQ(base,mid,slot){
-    const reason=firstSentence(base.explanation||'');
-    if(!reason||reason.length>200)return normalQ(base,mid,slot);
-    const opts=['Pernyataan benar, alasan benar, dan berhubungan sebab–akibat.','Pernyataan benar, alasan benar, tetapi tidak berhubungan sebab–akibat.','Pernyataan benar, tetapi alasan salah.','Pernyataan salah dan alasan salah.'];
-    const asks=['Bagaimana hubungan pernyataan dan alasan tersebut?','Manakah penilaian yang tepat atas pernyataan dan alasan itu?','Tentukan hubungan sebab–akibat yang benar.'];
-    const statement=clean(base.answer).replace(/[.!?]+$/,'');
-    return {...base,question:cap(`Pernyataan: ${statement}. Alasan: ${reason} ${asks[facetFor(mid,slot)%asks.length]}`),options:opts,answer:opts[0],explanation:`${statement} merupakan jawaban acuan. ${clean(base.explanation||'')}`,questionType:'Sebab–Akibat'};
   }
 
   function caseQ(base,mid,slot){
@@ -115,7 +106,7 @@
   function question(mid,slot){
     const base=baseFor(mid,slot);if(!base)return null;
     const t=isLongSlot(slot)?'long':typeFor(slot);
-    let q=t==='long'?longQ(base,mid,slot):t==='normal'?normalQ(base,mid,slot):t==='except'?exceptQ(base,mid,slot):t==='cause'?causeQ(base,mid,slot):caseQ(base,mid,slot);
+    let q=t==='long'?longQ(base,mid,slot):t==='normal'?normalQ(base,mid,slot):t==='except'?exceptQ(base,mid,slot):caseQ(base,mid,slot);
     q.question=cap(clean(q.question));
     const kind=isLongSlot(slot)?'long':'short',facet=facetFor(mid,slot);
     const structureKey=`${conceptKey(base)}|${q.questionType}|${kind}|facet-${facet}`;
