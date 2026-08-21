@@ -1,0 +1,32 @@
+name: V10 DB bank rollout
+on:
+  push:
+    paths:
+      - '.github/workflows/v10-db-bank-rollout.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          old='2026.08.21.1533'; new='2026.08.21.1602'
+          p=Path('index.html'); s=p.read_text().replace(old,new)
+          s=s.replace(f'  <script src="js/v9-global-unique.js?v={new}"></script>\n',f'  <script src="js/v10-db-bank.js?v={new}"></script>\n')
+          if 'js/v10-db-bank.js' not in s:
+              marker=f'<script src="js/v5-patch.js?v={new}"></script>'
+              s=s.replace(marker,marker+f'\n  <script src="js/v10-db-bank.js?v={new}"></script>')
+          p.write_text(s)
+          Path('version.json').write_text(json.dumps({'build':new,'forceCacheReset':True},separators=(',',':')))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html version.json
+          git diff --cached --quiet || git commit -m "Activate Supabase-backed V10 question bank"
+          git push
