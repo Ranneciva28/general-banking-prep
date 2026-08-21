@@ -29,6 +29,23 @@
     }catch(e){}finally{busy=false}
   }
 
+  async function markAnswer(q,isCorrect){
+    try{
+      await fetch(`${URL}/rest/v1/rpc/gbp_question_mark_answer`,{
+        method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','apikey':KEY},
+        body:JSON.stringify({p_client_id:clientId,p_module_id:Number(q.moduleId),p_slot_no:Number(q.bankSlot),p_is_correct:!!isCorrect})
+      });
+    }catch(e){}
+  }
+
+  document.addEventListener('click',e=>{
+    const btn=e.target.closest?.('.option-btn');if(!btn)return;
+    const text=clean(document.getElementById('questionText')?.textContent);if(!text)return;
+    const q=(window.QUESTION_BANK||[]).find(x=>clean(x.question)===text);if(!q?.bankSlot)return;
+    const opt=clean(btn.querySelector('span:last-child')?.textContent||'');
+    markAnswer(q,opt===clean(q.answer));
+  },true);
+
   document.addEventListener('DOMContentLoaded',()=>{
     const el=document.getElementById('questionText');
     if(el)new MutationObserver(()=>queueMicrotask(registerShown)).observe(el,{childList:true,characterData:true,subtree:true});
