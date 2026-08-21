@@ -16,6 +16,8 @@
   const order=a=>[...a].sort((x,y)=>rank(x)-rank(y)||clean(x.question).length-clean(y.question).length||String(x.id).localeCompare(String(y.id)));
   const pool=mid=>SOURCE.filter(q=>Number(q.moduleId)===Number(mid));
   const moduleName=mid=>pool(mid)[0]?.moduleName||`Module ${mid}`;
+  const moduleTags={1:'Peran-Bank',2:'Dana',3:'Kredit',4:'Regulasi',5:'Ecosystem',6:'Future-Banking',7:'Info-Produk',8:'Edukasi',9:'Pengaduan',10:'Rekening',11:'Transaksi',12:'Administrasi',13:'Valas',14:'Trade-Finance',15:'Akuntansi-Perusahaan',16:'Akuntansi-Bank',17:'Risk-Culture',18:'Anti-Fraud',19:'BCM-K3',20:'PDP',21:'KYC',22:'Hukum',23:'Three-Lines',24:'APU-PPT',25:'BRIDGE',26:'NUPMK-Info-Produk',27:'NUPMK-Edukasi',28:'NUPMK-Pengaduan',29:'NUPMK-Rekening',30:'NUPMK-Transaksi',31:'NUPMK-Administrasi',32:'NUPMK-Valas',33:'NUPMK-Trade',34:'NUPMK-Akuntansi',35:'NUPMK-Hukum'};
+  const moduleTag=mid=>moduleTags[mid]||moduleName(mid);
   const firstSentence=s=>{const x=clean(s);const m=x.match(/^.*?[.!?](?=\s|$)/);return m?m[0].trim():x};
   const clientId=(()=>{let x=localStorage.getItem(SESSION_KEY);if(!x){x=`${Date.now().toString(36)}-${crypto.getRandomValues(new Uint32Array(2)).join('-')}`;localStorage.setItem(SESSION_KEY,x)}return x})();
 
@@ -45,7 +47,7 @@
     const a=actors[n%actors.length];
     const b=actions[Math.floor(n/actors.length)%actions.length];
     const c=contexts[Math.floor(n/(actors.length*actions.length))%contexts.length];
-    return `${a} ${b} ${c} terkait ${moduleName(mid)}.`;
+    return `${a} ${b} pada ${moduleTag(mid)} ${c}.`;
   }
 
   const typeFor=slot=>{const b=(slot-1)%50;return b<18?'normal':b<27?'except':b<35?'cause':b<43?'complex':'case'};
