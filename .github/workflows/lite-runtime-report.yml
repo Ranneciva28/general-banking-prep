@@ -1,0 +1,26 @@
+name: Lite runtime report
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lite-runtime-report.yml']
+permissions:
+  contents: write
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Generate report
+        run: |
+          cat > /tmp/report.js <<'NODE'
+          const storage={};global.window={QUESTION_BANK:[]};global.localStorage={getItem:k=>storage[k]??null,setItem:(k,v)=>storage[k]=String(v),removeItem:k=>delete storage[k]};global.sessionStorage={getItem:()=>null,setItem:()=>{},removeItem:()=>{}};global.crypto=require('crypto').webcrypto;global.document={addEventListener:()=>{},querySelector:()=>null,querySelectorAll:()=>[],getElementById:()=>null,referrer:''};global.location={reload(){},pathname:'/'};global.navigator={userAgent:'audit',language:'id-ID'};global.screen={width:1,height:1};global.fetch=async()=>({ok:true,text:async()=>'',json:async()=>({accepted_count:25,accepted_slots:[]})});
+          for(const f of ['questions','material-bank-core','material-bank-d1','material-bank-d2','material-bank-d3','material-bank-d4d5','material-bank-extra','bridge-module','bridge-category','nupmk-modules','lite-catalog','v23-quality-bank'])require(process.cwd()+'/js/'+f+'.js');
+          const src=window.__GBP_SOURCE_BANK__||[];console.log('SOURCE_MODULES='+[...new Set(src.map(q=>Number(q.moduleId)))].sort((a,b)=>a-b).join(','));for(let m=25;m<=35;m++)console.log(`SOURCE M${m}=${src.filter(q=>Number(q.moduleId)===m).length}`);
+          window.QUESTION_BANK.splice(0,window.QUESTION_BANK.length,...src);require(process.cwd()+'/js/v14-db-bank.js');for(let m=25;m<=35;m++)console.log(`ACTIVE M${m}=${window.QUESTION_BANK.filter(q=>Number(q.moduleId)===m).length}`);
+          NODE
+          node /tmp/report.js > lite-runtime-report.txt 2>&1 || true
+          cat lite-runtime-report.txt
+          git config user.name "github-actions[bot]";git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lite-runtime-report.txt;git commit -m "Publish lite runtime count report";git push
