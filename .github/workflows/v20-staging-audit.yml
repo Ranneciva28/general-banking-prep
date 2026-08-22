@@ -1,0 +1,138 @@
+name: V20 staging audit
+on:
+  push:
+    branches: [v19-staging]
+    paths:
+      - '.github/workflows/v20-staging-audit.yml'
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v19-staging
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Harden selector against conceptual repeats
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('js/v14-db-bank.js'); s=p.read_text()
+          if "const semanticKey=q=>" not in s:
+              s=s.replace("  const optionKey=q=>(Array.isArray(q?.options)?q.options:[]).map(x=>lower(x).replace(/[^a-z0-9à-öø-ÿ]+/giu,' ').replace(/\\s+/g,' ').trim()).filter(Boolean).sort().join('|');",
+              "  const optionKey=q=>(Array.isArray(q?.options)?q.options:[]).map(x=>lower(x).replace(/[^a-z0-9à-öø-ÿ]+/giu,' ').replace(/\\s+/g,' ').trim()).filter(Boolean).sort().join('|');\n  const semanticKey=q=>lower(q?.conceptSignature||`${q?.rootQuestionId||q?.baseId||q?.id||''}|${q?.variantMode||''}|${(q?.optionConcepts||[]).join('|')}`);\n  const rootKey=q=>String(q?.rootQuestionId||q?.baseId||q?.id||'');")
+
+          s=re.sub(r"  function replaceModule\(mid,slots\)\{.*?\n  \}\n  function previewSlots", """  function replaceModule(mid,slots){
+    const target=window.QUESTION_BANK||[],others=target.filter(q=>Number(q.moduleId)!==Number(mid)),seen=new Set(),seenOptions=new Set(),seenSemantic=new Set(),qs=[];
+    for(const slot of slots){const q=question(mid,slot),k=textKey(q),ok=optionKey(q),ck=semanticKey(q);if(!q||!k||!ok||!ck||seen.has(k)||seenOptions.has(ok)||seenSemantic.has(ck))continue;seen.add(k);seenOptions.add(ok);seenSemantic.add(ck);qs.push(q)}
+    target.splice(0,target.length,...others,...order(qs));
+  }
+  function previewSlots""", s, flags=re.S)
+
+          s=re.sub(r"  function previewSlots\(mid\)\{.*?\n  \}\n  function applyPreviews", """  function previewSlots(mid){
+    const st=getState(mid);if(st.active.length===ACTIVE_LIMIT)return st.active;
+    const chosen=[],seen=new Set(),seenOptions=new Set(),seenSemantic=new Set(),rootCounts=new Map(),start=((mid*191)%BANK_SIZE)+1;
+    const scan=maxRoot=>{
+      for(let i=0;i<BANK_SIZE&&chosen.length<ACTIVE_LIMIT;i++){
+        const slot=((start-1+i*107)%BANK_SIZE)+1,q=question(mid,slot),k=textKey(q),ok=optionKey(q),ck=semanticKey(q),rk=rootKey(q);if(!q||!k||!ok||!ck||seen.has(k)||seenOptions.has(ok)||seenSemantic.has(ck))continue;
+        if((rootCounts.get(rk)||0)>=maxRoot)continue;
+        seen.add(k);seenOptions.add(ok);seenSemantic.add(ck);rootCounts.set(rk,(rootCounts.get(rk)||0)+1);chosen.push(slot);
+      }
+    };
+    scan(1);if(chosen.length<ACTIVE_LIMIT)scan(2);if(chosen.length<ACTIVE_LIMIT)scan(3);return chosen.slice(0,ACTIVE_LIMIT);
+  }
+  function applyPreviews""", s, flags=re.S)
+
+          s=re.sub(r"  function pickLocalUnique\(mid\)\{.*?\n  \}\n  async function syncActive", """  function pickLocalUnique(mid){
+    const active=[],seen=new Set(),seenOptions=new Set(),seenSemantic=new Set(),rootCounts=new Map(),start=1+Math.floor(Math.random()*BANK_SIZE),step=109;
+    const scan=(maxRoot,ignoreHistory,ignoreRootHistory)=>{
+      for(let i=0;i<BANK_SIZE&&active.length<ACTIVE_LIMIT;i++){
+        const slot=((start-1+i*step)%BANK_SIZE)+1,q=question(mid,slot),k=textKey(q),ok=optionKey(q),ck=semanticKey(q),rk=rootKey(q);if(!q||!k||!ok||!ck||seen.has(k)||seenOptions.has(ok)||seenSemantic.has(ck))continue;
+        if((rootCounts.get(rk)||0)>=maxRoot)continue;
+        if(!ignoreHistory&&(localSeen['q:'+k]||localSeen['o:'+ok]||localSeen['c:'+ck]))continue;
+        if(!ignoreRootHistory&&localSeen['r:'+rk])continue;
+        seen.add(k);seenOptions.add(ok);seenSemantic.add(ck);rootCounts.set(rk,(rootCounts.get(rk)||0)+1);active.push(slot);
+      }
+    };
+    scan(1,false,false);if(active.length<ACTIVE_LIMIT)scan(1,false,true);if(active.length<ACTIVE_LIMIT)scan(2,false,true);if(active.length<ACTIVE_LIMIT)scan(2,true,true);if(active.length<ACTIVE_LIMIT)scan(3,true,true);
+    for(const slot of active){const q=question(mid,slot),k=textKey(q),ok=optionKey(q),ck=semanticKey(q),rk=rootKey(q);if(k)localSeen['q:'+k]=Date.now();if(ok)localSeen['o:'+ok]=Date.now();if(ck)localSeen['c:'+ck]=Date.now();if(rk)localSeen['r:'+rk]=Date.now()}
+    saveSeen();saveState(mid,{active,synced:false,updatedAt:Date.now()});replaceModule(mid,active);return active;
+  }
+  async function syncActive""", s, flags=re.S)
+
+          s=re.sub(r"  async function ensureModule\(mid\)\{.*?\n  \}\n\n  function clearProgress", """  async function ensureModule(mid){
+    const st=getState(mid);
+    if(st.active.length===ACTIVE_LIMIT){const seen=new Set(),seenOptions=new Set(),seenSemantic=new Set();let valid=true;for(const slot of st.active){const q=question(mid,slot),k=textKey(q),ok=optionKey(q),ck=semanticKey(q);if(!k||!ok||!ck||seen.has(k)||seenOptions.has(ok)||seenSemantic.has(ck)){valid=false;break}seen.add(k);seenOptions.add(ok);seenSemantic.add(ck)}if(valid){replaceModule(mid,st.active);if(!st.synced)setTimeout(()=>syncActive(mid,st.active),0);return st.active}}
+    return reserveNew(mid);
+  }
+
+  function clearProgress""", s, flags=re.S)
+
+          s=s.replace("engine:'v18-distinct-25'","engine:'v20-hots-25'").replace("'25 soal baru aktif. Stem dan set opsi tidak diulang.'","'25 soal HOTS baru aktif. Stem, konsep, dan set opsi diprioritaskan belum pernah tampil.'")
+          p.write_text(s)
+          PY
+          node --check js/v16-source-variants.js
+          node --check js/v14-db-bank.js
+      - name: Audit bank and live 25-question previews
+        run: |
+          node <<'NODE' > v20-audit.txt 2>&1
+          const store={};
+          global.window={QUESTION_BANK:[]};
+          global.localStorage={getItem:k=>store[k]??null,setItem:(k,v)=>store[k]=String(v),removeItem:k=>delete store[k]};
+          global.sessionStorage={getItem:()=>null,setItem:()=>{}};
+          global.document={addEventListener:()=>{},querySelector:()=>null,querySelectorAll:()=>[],getElementById:()=>null};
+          global.location={reload:()=>{}};
+          global.navigator={userAgent:'node',language:'id-ID'};
+          global.screen={width:1440,height:900};
+          global.crypto=require('crypto').webcrypto;
+          global.fetch=async()=>({ok:true,json:async()=>({})});
+          require('./js/questions.js');
+          require('./js/bridge-module.js');
+          require('./js/bridge-category.js');
+          require('./js/nupmk-modules.js');
+          const roots=JSON.parse(JSON.stringify(window.__GBP_SOURCE_BANK__||window.QUESTION_BANK));
+          require('./js/v16-source-variants.js');
+          const quality=JSON.parse(JSON.stringify(window.__GBP_SOURCE_BANK__||[]));
+          const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9à-öø-ÿ]+/giu,' ').replace(/\s+/g,' ').trim();
+          const optionKey=q=>(q.options||[]).map(norm).sort().join('|');
+          const stop=new Set('yang dan atau untuk pada dalam dengan dari ke di bank nasabah proses tahapan kerja suatu sebuah sebagai harus perlu paling tepat tersebut ini itu agar serta adalah dilakukan melakukan kondisi keputusan petugas tim unit saat karena ketika jika akan bisa dapat oleh menjadi sedang sebelum setelah'.split(' '));
+          const toks=s=>new Set(norm(s).split(' ').filter(x=>x.length>2&&!stop.has(x)));
+          const jac=(a,b)=>{const A=toks(a),B=toks(b);if(!A.size||!B.size)return 0;let n=0;for(const x of A)if(B.has(x))n++;return n/(A.size+B.size-n)};
+          let fail=false;
+          console.log('SOURCE QUALITY BANK');
+          for(let mid=1;mid<=35;mid++){
+            const rows=quality.filter(q=>Number(q.moduleId)===mid),rootRows=roots.filter(q=>Number(q.moduleId)===mid);
+            const stems=new Set(),opts=new Set(),modes=new Set(),rootIds=new Set();let dup=0,meta=0,short=0,maxSim=0;
+            for(let i=0;i<rows.length;i++){
+              const sk=norm(rows[i].question),ok=optionKey(rows[i]);if(stems.has(sk)||opts.has(ok))dup++;stems.add(sk);opts.add(ok);modes.add(rows[i].variantMode);rootIds.add(rows[i].rootQuestionId);
+              if(/\b(materi|slide|modul)\b/i.test(rows[i].question))meta++;if(rows[i].question.length<145)short++;
+              for(let j=Math.max(0,i-80);j<i;j++)maxSim=Math.max(maxSim,jac(rows[i].question,rows[j].question));
+            }
+            console.log(`M${String(mid).padStart(2,'0')} roots=${rootRows.length} quality=${rows.length} rootsUsed=${rootIds.size} modes=${modes.size} dup=${dup} meta=${meta} short=${short} maxSim=${maxSim.toFixed(2)}`);
+            if(rows.length<40||dup||meta||short)fail=true;
+          }
+          window.QUESTION_BANK.splice(0,window.QUESTION_BANK.length,...quality);
+          require('./js/v14-db-bank.js');
+          console.log('\nACTIVE PREVIEWS');
+          for(let mid=1;mid<=35;mid++){
+            const rows=window.QUESTION_BANK.filter(q=>Number(q.moduleId)===mid),stems=new Set(),opts=new Set(),sem=new Set(),rootsSet=new Set();let dup=0;
+            for(const q of rows){const sk=norm(q.question),ok=optionKey(q),ck=norm(q.conceptSignature||`${q.rootQuestionId||q.baseId}|${q.variantMode||''}`);if(stems.has(sk)||opts.has(ok)||sem.has(ck))dup++;stems.add(sk);opts.add(ok);sem.add(ck);rootsSet.add(q.rootQuestionId||q.baseId)}
+            console.log(`M${String(mid).padStart(2,'0')} active=${rows.length} roots=${rootsSet.size} dup=${dup}`);
+            if(rows.length!==25||dup)fail=true;
+          }
+          console.log(fail?'AUDIT=FAIL':'AUDIT=PASS');
+          process.exitCode=0;
+          NODE
+          cat v20-audit.txt
+      - name: Publish staging patch and audit report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/v14-db-bank.js v20-audit.txt
+          git commit -m "Audit V20 HOTS bank on staging" || true
+          git push origin HEAD:v19-staging
