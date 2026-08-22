@@ -2,9 +2,9 @@
   const SUPA_URL='https://pnisrktkkbzspolkfkag.supabase.co';
   const SUPA_KEY='sb_publishable_ClLcjnxymypzS2O6x1TzwA_c9y7-j1Y';
   const SESSION_KEY='gbpAnalyticsSessionV1';
-  const STATE_KEY='gbpDbBankV20';
+  const STATE_KEY='gbpDbBankV24';
   const PROGRESS_KEY='generalBankingModuleProgressV1';
-  const LOCAL_SEEN_KEY='gbpQuestionSeenV20';
+  const LOCAL_SEEN_KEY='gbpQuestionSeenV24';
   const ACTIVE_LIMIT=25;
   const SOURCE=[...(window.__GBP_SOURCE_BANK__||[])];
   if(!SOURCE.length)return;
@@ -26,10 +26,10 @@
   const getState=mid=>{const r=state[String(mid)]||{};return{active:Array.isArray(r.active)?r.active.map(Number):[],synced:!!r.synced,updatedAt:Number(r.updatedAt)||0}};
   const saveState=(mid,v)=>{state[String(mid)]={...getState(mid),...v};localStorage.setItem(STATE_KEY,JSON.stringify(state))};
   const saveSeen=()=>{try{const rows=Object.entries(localSeen).sort((a,b)=>b[1]-a[1]).slice(0,25000);localSeen=Object.fromEntries(rows);localStorage.setItem(LOCAL_SEEN_KEY,JSON.stringify(localSeen))}catch(e){}};
-  try{const mk='gbpHotsSelectorV20b';if(!localStorage.getItem(mk)){localStorage.removeItem('gbpDbBankV14');localStorage.removeItem(STATE_KEY);state={};localStorage.setItem(mk,'1')}}catch(e){}
+  try{const mk='gbpConciseSelectorV24';if(!localStorage.getItem(mk)){localStorage.removeItem('gbpDbBankV14');localStorage.removeItem('gbpDbBankV20');localStorage.removeItem('gbpQuestionSeenV20');localStorage.removeItem(STATE_KEY);state={};localStorage.setItem(mk,'1')}}catch(e){}
 
-  function question(mid,slot){const p=pool(mid),base=p[Number(slot)-1];if(!base)return null;return {...base,id:base.id||`V20-M${mid}-S${slot}`,bankSlot:Number(slot),bankEpoch:20,generated:true,baseId:base.rootQuestionId||base.baseId||base.id,structureKey:base.conceptSignature||`${rootKey(base)}|${base.variantMode||''}|${semanticKey(base)}`};}
-  function validUnique(q,seenStem,seenOpt,seenSem){const sk=textKey(q),ok=optionKey(q),ck=semanticKey(q);return !!(q&&sk&&ok&&ck&&!seenStem.has(sk)&&!seenOpt.has(ok)&&!seenSem.has(ck)&&Array.isArray(q.options)&&q.options.length===4&&q.options.some(x=>clean(x)===clean(q.answer)));}
+  function question(mid,slot){const p=pool(mid),base=p[Number(slot)-1];if(!base)return null;return {...base,id:base.id||`V24-M${mid}-S${slot}`,bankSlot:Number(slot),bankEpoch:24,generated:true,baseId:base.rootQuestionId||base.baseId||base.id,structureKey:base.conceptSignature||`${rootKey(base)}|${base.variantMode||''}|${semanticKey(base)}`};}
+  function validUnique(q,seenStem,seenOpt,seenSem){const sk=textKey(q),ok=optionKey(q),ck=semanticKey(q);return !!(q&&sk&&ok&&ck&&!seenStem.has(sk)&&!seenSem.has(ck)&&Array.isArray(q.options)&&q.options.length===4&&q.options.some(x=>clean(x)===clean(q.answer)));}
 
   function buildSet(mid,{respectHistory=true,seedOffset=0}={}){
     const p=pool(mid),active=[],seenStem=new Set(),seenOpt=new Set(),seenSem=new Set(),rootCounts=new Map();if(!p.length)return active;
@@ -38,7 +38,7 @@
       for(let i=0;i<p.length*3&&active.length<ACTIVE_LIMIT;i++){
         const slot=((start+i*step)%p.length)+1,q=question(mid,slot);if(!q||!validUnique(q,seenStem,seenOpt,seenSem))continue;
         const sk=textKey(q),ok=optionKey(q),ck=semanticKey(q),rk=rootKey(q);if((rootCounts.get(rk)||0)>=maxRoot)continue;
-        if(respectHistory&&!ignoreHistory&&(localSeen['q:'+sk]||localSeen['o:'+ok]||localSeen['c:'+ck]))continue;
+        if(respectHistory&&!ignoreHistory&&(localSeen['q:'+sk]||localSeen['c:'+ck]))continue;
         if(respectHistory&&!ignoreRootHistory&&localSeen['r:'+rk])continue;
         seenStem.add(sk);seenOpt.add(ok);seenSem.add(ck);rootCounts.set(rk,(rootCounts.get(rk)||0)+1);active.push(slot);
       }
@@ -61,17 +61,17 @@
   function clearProgress(mid){try{const all=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'{}')||{};delete all[String(mid)];localStorage.setItem(PROGRESS_KEY,JSON.stringify(all));}catch(e){localStorage.removeItem(PROGRESS_KEY);}try{window.GBPApp?.clearModuleProgress?.(mid);}catch(e){}}
   const toast=msg=>{const el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add('hidden'),4000);};
   const setBusy=(btn,on)=>{if(!btn)return;btn.disabled=on;btn.dataset.oldText=btn.dataset.oldText||btn.textContent;btn.textContent=on?'Menyiapkan 25 soal baru…':btn.dataset.oldText;};
-  async function generate(mid,button){setBusy(button,true);try{const active=await reserveNew(mid);clearProgress(mid);try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,day:pool(mid)[0]?.day||null,questionCount:active.length,meta:{databaseBank:true,engine:'v20-hots-direct',noRepeat:true,uniqueStem:true,uniqueOptions:true,uniqueConcept:true}});}catch(e){}sessionStorage.setItem('gbpAutoOpenModule',String(mid));sessionStorage.setItem('gbpGenerationToast','25 soal HOTS baru aktif. Stem, opsi, dan konsep diprioritaskan belum pernah tampil.');location.reload();}catch(e){console.error(e);setBusy(button,false);toast('Belum tersedia 25 soal unik yang lolos filter kualitas. Coba module lain atau generate kembali.');}}
+  async function generate(mid,button){setBusy(button,true);try{const active=await reserveNew(mid);clearProgress(mid);try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,day:pool(mid)[0]?.day||null,questionCount:active.length,meta:{databaseBank:true,engine:'v24-concise-grounded',noRepeat:true,uniqueStem:true,uniqueOptions:false,uniqueConcept:true,concise:true}});}catch(e){}sessionStorage.setItem('gbpAutoOpenModule',String(mid));sessionStorage.setItem('gbpGenerationToast','25 soal ringkas berbasis materi aktif. Stem dan konsep diprioritaskan belum pernah tampil.');location.reload();}catch(e){console.error(e);setBusy(button,false);toast('Belum tersedia 25 soal ringkas yang lolos filter kualitas. Coba generate kembali.');}}
   function midFromStart(btn){return Number(btn?.dataset?.moduleStart||btn?.dataset?.specialStart||btn?.dataset?.nupmkStart||0)||null;}
   async function prepareSetup(button){const mids=[...document.querySelectorAll('.setup-module-card.selected')].map(x=>Number(x.dataset.module)).filter(Boolean);if(!mids.length)return false;setBusy(button,true);for(const mid of mids)await ensureModule(mid);setBusy(button,false);return true;}
 
   document.addEventListener('click',e=>{
-    const gen=e.target.closest?.('.quiz-generate-btn');if(gen){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();const name=document.getElementById('moduleTag')?.textContent?.trim(),q=(window.QUESTION_BANK||[]).find(x=>x.moduleName===name),mid=q?Number(q.moduleId):null;if(mid&&confirm('Generate 25 soal HOTS baru? Sistem akan memprioritaskan stem, opsi, konsep, dan root question yang belum pernah tampil.'))generate(mid,gen);return;}
+    const gen=e.target.closest?.('.quiz-generate-btn');if(gen){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();const name=document.getElementById('moduleTag')?.textContent?.trim(),q=(window.QUESTION_BANK||[]).find(x=>x.moduleName===name),mid=q?Number(q.moduleId):null;if(mid&&confirm('Generate 25 soal ringkas baru? Sistem akan memprioritaskan stem dan konsep yang belum pernah tampil.'))generate(mid,gen);return;}
     const setup=e.target.closest?.('#startQuizBtn');if(setup&&setup.dataset.dbPrepared!=='1'){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();prepareSetup(setup).then(ok=>{if(!ok){setBusy(setup,false);return;}setup.dataset.dbPrepared='1';setup.click();setTimeout(()=>delete setup.dataset.dbPrepared,0);}).catch(err=>{console.error(err);setBusy(setup,false);setup.dataset.dbPrepared='1';setup.click();setTimeout(()=>delete setup.dataset.dbPrepared,0);});return;}
     const start=e.target.closest?.('[data-module-start],[data-special-start],[data-nupmk-start]');if(!start||start.dataset.dbPrepared==='1')return;const mid=midFromStart(start);if(!mid)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();setBusy(start,true);ensureModule(mid).then(()=>{setBusy(start,false);start.dataset.dbPrepared='1';start.click();setTimeout(()=>delete start.dataset.dbPrepared,0);}).catch(err=>{console.error(err);setBusy(start,false);start.dataset.dbPrepared='1';start.click();setTimeout(()=>delete start.dataset.dbPrepared,0);});
   },true);
 
   applyPreviews();
-  window.GBPDatabaseQuestionBank={engine:'v20-hots-direct',bankSize:Math.max(...moduleIds.map(mid=>pool(mid).length),0),ensureModule,reserveNew,clientId};
-  document.addEventListener('DOMContentLoaded',()=>{if(window.GBPQuestionBank){window.GBPQuestionBank.generate=mid=>generate(mid,document.querySelector('.quiz-generate-btn'));window.GBPQuestionBank.bankInfo=mid=>{const st=getState(mid);return{active:st.active.length||ACTIVE_LIMIT,database:true,engine:'v20-hots-direct'};};}});
+  window.GBPDatabaseQuestionBank={engine:'v24-concise-grounded',bankSize:Math.max(...moduleIds.map(mid=>pool(mid).length),0),ensureModule,reserveNew,clientId};
+  document.addEventListener('DOMContentLoaded',()=>{if(window.GBPQuestionBank){window.GBPQuestionBank.generate=mid=>generate(mid,document.querySelector('.quiz-generate-btn'));window.GBPQuestionBank.bankInfo=mid=>{const st=getState(mid);return{active:st.active.length||ACTIVE_LIMIT,database:true,engine:'v24-concise-grounded'};};}});
 })();
