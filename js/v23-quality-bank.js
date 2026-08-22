@@ -8,6 +8,9 @@
   const cap=s=>String(s??'').replace(/^(\s*[^A-Za-zÀ-ÖØ-öø-ÿ]*)([a-zà-öø-ÿ])/u,(_,a,b)=>a+b.toLocaleUpperCase('id-ID'));
   const rootId=q=>String(q?.rootQuestionId||q?.baseId||q?.id||'');
   const banned=/\b(?:pernyataan\s*:|alasan\s*:|sebab\s*[–-]?\s*akibat|pilih pernyataan yang benar|manakah satu pilihan yang benar|pilih satu pernyataan yang tepat|pertanyaan acuan)\b/i;
+  const stop=new Set('yang dan atau untuk pada dalam dengan dari ke di ini itu tersebut sebuah suatu seorang adalah ialah merupakan sebagai agar serta paling lebih tepat sesuai analisis keputusan tindakan kesimpulan jawaban pilihan manakah apakah apa bagaimana mengapa berikut kondisi kasus situasi bank nasabah unit petugas proses dilakukan melakukan saat ketika jika maka perlu harus dapat akan mana berdasarkan terhadap terkait konteks'.split(' '));
+  const promptTail=/(?:[.!?…]\s*)?(?:analisis|keputusan|tindakan|kesimpulan|jawaban|pilihan|fungsi|konsep|produk|risiko|transformasi|langkah|kontrol|prinsip|peran)\s+(?:apa|mana|yang)?\s*(?:paling\s+)?(?:tepat|sesuai|relevan|benar|utama|dominan|baik)?\s*(?:adalah)?\s*[.?…]*$/i;
+  const genericAsk=/(?:[.!?…]\s*)?(?:manakah|apakah|apa|bagaimana|mengapa)\b[^.!?…]{0,95}[?…]*$/i;
 
   function cleanOption(raw){
     return clean(raw)
@@ -76,18 +79,30 @@
     return wordClip(s,MAX_STEM);
   }
 
-  const seenRoots=new Set(),seenStems=new Set(),out=[];
+  function coreText(q){let s=clean(q?.question||'').replace(promptTail,'').trim();const stripped=s.replace(genericAsk,'').trim();if(stripped.length>=45)s=stripped;return norm(s);}
+  function sig(q){return coreText(q).split(' ').filter(t=>t.length>2&&!stop.has(t));}
+  function jac(a,b){const A=new Set(a),B=new Set(b);if(!A.size||!B.size)return 0;let n=0;for(const x of A)if(B.has(x))n++;return n/(A.size+B.size-n);}
+  function bigrams(a){const x=[];for(let i=0;i<a.length-1;i++)x.push(`${a[i]} ${a[i+1]}`);return x;}
+  function near(a,b){
+    if(!a||!b)return false;
+    if(rootId(a)&&rootId(a)===rootId(b))return true;
+    const ca=coreText(a),cb=coreText(b);if(ca.length>=28&&ca===cb)return true;
+    const A=sig(a),B=sig(b),min=Math.min(A.length,B.length);
+    if(min>=6&&jac(A,B)>=.84)return true;
+    if(Math.min(bigrams(A).length,bigrams(B).length)>=5&&jac(bigrams(A),bigrams(B))>=.78)return true;
+    return false;
+  }
+
+  const seenRoots=new Set(),seenStems=new Set(),acceptedByModule=new Map(),out=[];
   for(const base of SOURCE){
     if(!base||!Array.isArray(base.options)||base.options.length!==4||banned.test(clean(base.question)))continue;
-    const root=rootId(base),mid=Number(base.moduleId)||0;
-    const rootKey=`${mid}|${root}`;
+    const root=rootId(base),mid=Number(base.moduleId)||0,rootKey=`${mid}|${root}`;
     if(!root||!mid||seenRoots.has(rootKey))continue;
     const answerIndex=base.options.findIndex(x=>norm(x)===norm(base.answer));if(answerIndex<0)continue;
     const options=base.options.map(cleanOption);if(new Set(options.map(norm)).size!==4)continue;
     const question=compact(base.question),stem=norm(question),stemKey=`${mid}|${stem}`;
     if(!stem||banned.test(question)||seenStems.has(stemKey))continue;
-    seenRoots.add(rootKey);seenStems.add(stemKey);
-    out.push({
+    const candidate={
       ...base,
       id:`V25-M${mid}-${root}`,
       question,
@@ -100,7 +115,11 @@
       conceptSignature:`m${mid}|root:${root}`,
       generated:!!base.generated,
       qualityVersion:'V25-distinct-root'
-    });
+    };
+    const peers=acceptedByModule.get(mid)||[];
+    if(peers.some(x=>near(candidate,x)))continue;
+    peers.push(candidate);acceptedByModule.set(mid,peers);
+    seenRoots.add(rootKey);seenStems.add(stemKey);out.push(candidate);
   }
 
   if(out.length){
