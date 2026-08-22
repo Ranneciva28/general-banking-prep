@@ -7,11 +7,30 @@
   const uniq=a=>[...new Set((a||[]).map(clean).filter(Boolean))];
   const shuffle=(a,seed)=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=hash(`${seed}:${i}`)%(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
   const templates=[
-    clue=>`${clue} Istilah yang tepat?`,
-    clue=>`Konsep apa yang sesuai dengan kondisi ini: ${clue}?`,
-    clue=>`${clue} Apa yang dimaksud?`,
-    clue=>`Dalam konteks modul ini, ${clue} Merujuk pada apa?`
+    clue=>`${clue}. Istilah yang tepat?`,
+    clue=>`${clue}. Konsep yang tepat?`,
+    clue=>`${clue}. Apa yang dimaksud?`,
+    clue=>`${clue}. Merujuk pada apa?`
   ];
+
+  function tokens(s){return norm(s).split(' ').filter(Boolean)}
+  function similarity(answer,candidate){
+    const a=tokens(answer),b=tokens(candidate);if(!a.length||!b.length)return -99;
+    let score=0;
+    if(a[0]===b[0])score+=12;
+    if(a.length>1&&b.length>1&&a[1]===b[1])score+=6;
+    const A=new Set(a),B=new Set(b);let common=0;for(const x of A)if(B.has(x))common++;
+    score+=common*3;
+    const numsA=(answer.match(/\d+/g)||[]),numsB=(candidate.match(/\d+/g)||[]);
+    if(numsA.length&&numsB.length)score+=5;
+    if(/^([A-Z]{2,}|[A-Z]+\d+)/.test(answer)&&/^([A-Z]{2,}|[A-Z]+\d+)/.test(candidate))score+=3;
+    const ratio=Math.min(answer.length,candidate.length)/Math.max(answer.length,candidate.length);score+=ratio*2;
+    return score;
+  }
+  function distractorsFor(term,terms,seed){
+    const ranked=terms.filter(x=>norm(x)!==norm(term)).map((x,i)=>({x,s:similarity(term,x),t:hash(`${seed}:${i}:${x}`)})).sort((a,b)=>b.s-a.s||a.t-b.t).map(x=>x.x);
+    return uniq(ranked).slice(0,3);
+  }
 
   function add(data,sourceMap={}){
     for(const [midRaw,itemsRaw] of Object.entries(data||{})){
@@ -25,11 +44,10 @@
         const term=clean(item[0]),clue=clean(item[1]),customQ=clean(item[2]||''),customExp=clean(item[3]||'');
         const id=`MAT-M${String(mid).padStart(2,'0')}-${String(i+1).padStart(3,'0')}`;
         if(existingIds.has(id))return;
-        const pool=terms.filter(x=>norm(x)!==norm(term));
-        const distractors=shuffle(pool,`${mid}:${i}:d`).slice(0,3);
+        const distractors=distractorsFor(term,terms,`${mid}:${i}:d`);
         if(distractors.length<3)return;
         const options=shuffle([term,...distractors],`${mid}:${i}:o`);
-        const question=customQ||templates[i%templates.length](clue);
+        const question=(customQ||templates[i%templates.length](clue)).replace(/^Dalam konteks modul ini,\s*/i,'');
         bank.push({
           id,
           day:Number(meta.day)||1,
