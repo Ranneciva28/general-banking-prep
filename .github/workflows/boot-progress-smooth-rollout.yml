@@ -1,0 +1,41 @@
+name: Smooth boot progress rollout
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/boot-progress-smooth-rollout.yml']
+permissions:
+  contents: write
+jobs:
+  rollout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Start loader immediately and bump build
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          old='2026.08.22.1105'; new='2026.08.22.1110'
+          p=Path('index.html'); s=p.read_text()
+          s=s.replace('.boot-loading-bar{height:100%;width:8%;', '.boot-loading-bar{height:100%;width:5%;')
+          s=s.replace('<div class="boot-loading-pct" id="bootLoadingPct">8%</div>', '<div class="boot-loading-pct" id="bootLoadingPct">5%</div>')
+          bottom=f'  <script src="js/boot-loading.js?v={old}"></script>\n'
+          s=s.replace(bottom,'')
+          marker='''      <button class="boot-loading-retry" id="bootLoadingRetry" type="button" hidden>Reload safely</button>\n    </div>\n  </div>\n  <div class="app-layout">'''
+          insert=f'''      <button class="boot-loading-retry" id="bootLoadingRetry" type="button" hidden>Reload safely</button>\n    </div>\n  </div>\n  <script src="js/boot-loading.js?v={new}"></script>\n  <div class="app-layout">'''
+          if marker not in s:
+            raise SystemExit('boot overlay marker not found')
+          s=s.replace(marker,insert,1)
+          s=s.replace(old,new)
+          p.write_text(s)
+          Path('version.json').write_text(json.dumps({'build':new,'forceCacheReset':True},separators=(',',':')))
+          PY
+          node --check js/boot-loading.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html version.json
+          git commit -m "Animate boot progress smoothly from page start"
+          git push
