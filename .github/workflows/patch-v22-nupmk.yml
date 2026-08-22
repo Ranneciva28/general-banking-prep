@@ -1,0 +1,32 @@
+name: Patch staged NUPMK quality loader
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-v22-nupmk.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v19-staging
+          fetch-depth: 0
+      - name: Insert NUPMK quality layer into staging
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text()
+          needle='<script src="js/v16-source-variants.js?v=2026.08.21.2405"></script>'
+          add=needle+'\n  <script src="js/v22-nupmk-quality.js?v=2026.08.21.2405"></script>'
+          if 'v22-nupmk-quality.js' not in s:
+              s=s.replace(needle,add)
+          p.write_text(s)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Load NUPMK-specific HOTS quality layer" || true
+          git push origin HEAD:v19-staging
