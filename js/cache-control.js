@@ -58,7 +58,7 @@
     let payload={};try{payload=typeof init?.body==='string'?JSON.parse(init.body):{}}catch(e){}
     if(isUsed){
       try{const r=await nativeFetch(input,init);if(r.ok)return r}catch(e){}
-      return jsonResponse({module_id:Number(payload.p_module_id)||null,used:[],used_count:0,unused_count:5000,fallback:true});
+      return jsonResponse({module_id:Number(payload.p_module_id)||null,used:[],used_count:0,unused_count:3000,fallback:true});
     }
 
     const mid=Number(payload.p_module_id)||0,candidates=Array.isArray(payload.p_questions)?payload.p_questions:[];

@@ -17,7 +17,7 @@
   const rootKey=q=>String(q?.rootQuestionId||q?.baseId||q?.id||'');
   const rank=q=>({Sedang:1,'Sedang-Sulit':2,Sulit:3,Challenge:4,Expert:5}[q?.difficulty]||3);
   const order=a=>[...a].sort((x,y)=>rank(y)-rank(x)||String(x.id).localeCompare(String(y.id)));
-  const pool=mid=>SOURCE.filter(q=>Number(q.moduleId)===Number(mid)).slice(0,5000);
+  const pool=mid=>SOURCE.filter(q=>Number(q.moduleId)===Number(mid)).slice(0,3000);
   const moduleIds=[...new Set(SOURCE.map(q=>Number(q.moduleId)))].filter(Boolean).sort((a,b)=>a-b);
   const clientId=(()=>{let x=localStorage.getItem(SESSION_KEY);if(!x){x=`${Date.now().toString(36)}-${crypto.getRandomValues(new Uint32Array(2)).join('-')}`;localStorage.setItem(SESSION_KEY,x)}return x})();
 
@@ -137,7 +137,7 @@
     setBusy(button,true);
     try{
       const active=await reserveNew(mid);clearProgress(mid);
-      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,day:pool(mid)[0]?.day||null,questionCount:active.length,meta:{databaseBank:true,engine:'v25-distinct-root',replaceAll25:true,zeroImmediateOverlap:true,nearDuplicateGuard:true}});}catch(e){}
+      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,day:pool(mid)[0]?.day||null,questionCount:active.length,meta:{databaseBank:true,engine:'v25-distinct-root-lite',replaceAll25:true,zeroImmediateOverlap:true,nearDuplicateGuard:true}});}catch(e){}
       sessionStorage.setItem('gbpAutoOpenModule',String(mid));
       sessionStorage.setItem('gbpGenerationToast','25 soal lama diganti penuh dengan 25 soal berbeda. Soal satu-root dan near-duplicate diblokir.');
       location.reload();
@@ -154,6 +154,6 @@
   },true);
 
   applyPreviews();
-  window.GBPDatabaseQuestionBank={engine:'v25-distinct-root',bankSize:Math.max(...moduleIds.map(mid=>pool(mid).length),0),ensureModule,reserveNew,nearDuplicate,clientId};
-  document.addEventListener('DOMContentLoaded',()=>{if(window.GBPQuestionBank){window.GBPQuestionBank.generate=mid=>generate(mid,document.querySelector('.quiz-generate-btn'));window.GBPQuestionBank.bankInfo=mid=>{const st=getState(mid);return{active:st.active.length||ACTIVE_LIMIT,database:true,engine:'v25-distinct-root'};};}});
+  window.GBPDatabaseQuestionBank={engine:'v25-distinct-root-lite',bankSize:Math.max(...moduleIds.map(mid=>pool(mid).length),0),ensureModule,reserveNew,nearDuplicate,clientId};
+  document.addEventListener('DOMContentLoaded',()=>{if(window.GBPQuestionBank){window.GBPQuestionBank.generate=mid=>generate(mid,document.querySelector('.quiz-generate-btn'));window.GBPQuestionBank.bankInfo=mid=>{const st=getState(mid);return{active:st.active.length||ACTIVE_LIMIT,database:true,engine:'v25-distinct-root-lite'};};}});
 })();
