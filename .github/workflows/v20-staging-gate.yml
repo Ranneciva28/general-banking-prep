@@ -17,6 +17,7 @@ jobs:
           node --check js/questions.js
           node --check js/nupmk-modules.js
           node --check js/v16-source-variants.js
+          node --check js/v22-nupmk-quality.js
           node --check js/v14-db-bank.js
       - name: Runtime bank audit
         run: |
@@ -37,6 +38,7 @@ jobs:
           require(process.cwd()+'/js/bridge-category.js');
           require(process.cwd()+'/js/nupmk-modules.js');
           require(process.cwd()+'/js/v16-source-variants.js');
+          require(process.cwd()+'/js/v22-nupmk-quality.js');
           const quality=[...(window.__GBP_SOURCE_BANK__||[])];
           const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9à-öø-ÿ]+/giu,' ').replace(/\s+/g,' ').trim();
           const optionKey=q=>(q.options||[]).map(norm).sort().join('|');
