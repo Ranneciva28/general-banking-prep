@@ -1,3 +1,4 @@
+// Final source-bank guard before 25-question selection.
 (() => {
   const bank=window.__GBP_SOURCE_BANK__||[];
   if(!Array.isArray(bank)||!bank.length)return;
