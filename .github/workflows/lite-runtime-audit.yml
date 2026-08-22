@@ -1,0 +1,30 @@
+name: Lite runtime audit
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lite-runtime-audit.yml']
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Audit runtime module counts
+        run: |
+          cat > /tmp/audit.js <<'NODE'
+          const storage={};global.window={QUESTION_BANK:[]};global.localStorage={getItem:k=>storage[k]??null,setItem:(k,v)=>storage[k]=String(v),removeItem:k=>delete storage[k]};global.sessionStorage={getItem:()=>null,setItem:()=>{},removeItem:()=>{}};global.crypto=require('crypto').webcrypto;global.document={addEventListener:()=>{},querySelector:()=>null,querySelectorAll:()=>[],getElementById:()=>null,referrer:''};global.location={reload(){},pathname:'/'};global.navigator={userAgent:'audit',language:'id-ID'};global.screen={width:1,height:1};global.fetch=async()=>({ok:true,text:async()=>'',json:async()=>({accepted_count:25,accepted_slots:[]})});
+          require(process.cwd()+'/js/questions.js');require(process.cwd()+'/js/material-bank-core.js');require(process.cwd()+'/js/material-bank-d1.js');require(process.cwd()+'/js/material-bank-d2.js');require(process.cwd()+'/js/material-bank-d3.js');require(process.cwd()+'/js/material-bank-d4d5.js');require(process.cwd()+'/js/material-bank-extra.js');require(process.cwd()+'/js/bridge-module.js');require(process.cwd()+'/js/bridge-category.js');require(process.cwd()+'/js/nupmk-modules.js');require(process.cwd()+'/js/lite-catalog.js');require(process.cwd()+'/js/v23-quality-bank.js');
+          let fail=false;const src=window.__GBP_SOURCE_BANK__||[];
+          console.log('SOURCE_MODULES='+[...new Set(src.map(q=>Number(q.moduleId)))].sort((a,b)=>a-b).join(','));
+          for(let m=25;m<=35;m++){const r=src.filter(q=>Number(q.moduleId)===m);console.log(`SOURCE M${m}=${r.length}`);if(r.length<25)fail=true}
+          if(src.some(q=>Number(q.moduleId)<25)){console.log('LEGACY_MODULES_PRESENT');fail=true}
+          window.QUESTION_BANK.splice(0,window.QUESTION_BANK.length,...src);require(process.cwd()+'/js/v14-db-bank.js');
+          for(let m=25;m<=35;m++){const r=window.QUESTION_BANK.filter(q=>Number(q.moduleId)===m);console.log(`ACTIVE M${m}=${r.length}`);if(r.length!==25)fail=true}
+          console.log(fail?'LITE_AUDIT=FAIL':'LITE_AUDIT=PASS');process.exit(fail?1:0);
+          NODE
+          node /tmp/audit.js | tee lite-runtime-audit.txt
+          git config user.name "github-actions[bot]";git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lite-runtime-audit.txt;git commit -m "Publish lite runtime audit";git push
