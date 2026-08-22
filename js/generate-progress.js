@@ -1,51 +1,33 @@
 (() => {
   const PROGRESS_KEY='generalBankingModuleProgressV1';
-  let overlay=null,fill=null,percentEl=null,stageEl=null,titleEl=null,timer=null,current=0;
+  let overlay=null,fill=null,percentEl=null,stageEl=null,titleEl=null;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
   function ensureOverlay(){
     if(overlay)return overlay;
     const style=document.createElement('style');
     style.textContent=`
-      #gbpGenerateProgress{position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.64);backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;padding:20px;font-family:inherit}
+      #gbpGenerateProgress{position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.58);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:20px;font-family:inherit}
       #gbpGenerateProgress.show{display:flex}
-      #gbpGenerateProgress .gp-card{width:min(520px,100%);background:#fff;border:1px solid rgba(148,163,184,.28);border-radius:22px;padding:24px;box-shadow:0 30px 90px rgba(15,23,42,.28)}
-      #gbpGenerateProgress .gp-top{display:flex;align-items:center;gap:14px;margin-bottom:18px}
-      #gbpGenerateProgress .gp-icon{width:46px;height:46px;border-radius:14px;background:#eef4ff;color:#2454e6;display:grid;place-items:center;font-size:22px;font-weight:900;flex:0 0 auto}
+      #gbpGenerateProgress .gp-card{width:min(500px,100%);background:#fff;border:1px solid rgba(148,163,184,.24);border-radius:20px;padding:22px;box-shadow:0 24px 70px rgba(15,23,42,.25)}
+      #gbpGenerateProgress .gp-top{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+      #gbpGenerateProgress .gp-icon{width:44px;height:44px;border-radius:13px;background:#eef4ff;color:#2454e6;display:grid;place-items:center;font-size:21px;font-weight:900}
       #gbpGenerateProgress .gp-copy{min-width:0;flex:1}
-      #gbpGenerateProgress .gp-copy h3{margin:0 0 5px;font-size:18px;line-height:1.3;color:#0f172a}
-      #gbpGenerateProgress .gp-copy p{margin:0;color:#64748b;font-size:12px;line-height:1.45}
+      #gbpGenerateProgress .gp-copy h3{margin:0 0 4px;font-size:17px;color:#0f172a}
+      #gbpGenerateProgress .gp-copy p,#gbpGenerateProgress .gp-stage{margin:0;color:#64748b;font-size:12px;line-height:1.45}
       #gbpGenerateProgress .gp-value{font-size:13px;font-weight:900;color:#2454e6;min-width:40px;text-align:right}
-      #gbpGenerateProgress .gp-track{height:10px;background:#e8edf5;border-radius:999px;overflow:hidden;position:relative}
-      #gbpGenerateProgress .gp-fill{height:100%;width:0%;background:linear-gradient(90deg,#2454e6,#4f7cff);border-radius:inherit;transition:width .28s ease}
-      #gbpGenerateProgress .gp-stage{margin-top:10px;color:#475569;font-size:12px;min-height:18px}
+      #gbpGenerateProgress .gp-track{height:9px;background:#e8edf5;border-radius:999px;overflow:hidden}
+      #gbpGenerateProgress .gp-fill{height:100%;width:0;background:linear-gradient(90deg,#2454e6,#4f7cff);border-radius:inherit;transition:width .16s ease}
+      #gbpGenerateProgress .gp-stage{margin-top:9px;min-height:17px}
       #gbpGenerateProgress.done .gp-icon{background:#ecfdf3;color:#059669}
       #gbpGenerateProgress.done .gp-value{color:#059669}
-      #gbpGenerateProgress.done .gp-fill{background:linear-gradient(90deg,#10b981,#34d399)}
-      @media(max-width:640px){#gbpGenerateProgress .gp-card{padding:20px;border-radius:18px}#gbpGenerateProgress .gp-copy h3{font-size:16px}}
     `;
     document.head.appendChild(style);
-
     overlay=document.createElement('div');
     overlay.id='gbpGenerateProgress';
     overlay.setAttribute('role','status');
     overlay.setAttribute('aria-live','polite');
-    overlay.setAttribute('aria-busy','true');
-    overlay.innerHTML=`
-      <div class="gp-card">
-        <div class="gp-top">
-          <div class="gp-icon">↻</div>
-          <div class="gp-copy">
-            <h3>Generating new questions, please wait....</h3>
-            <p>We’re preparing 25 new questions and checking for duplicate patterns.</p>
-          </div>
-          <div class="gp-value">0%</div>
-        </div>
-        <div class="gp-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <div class="gp-fill"></div>
-        </div>
-        <div class="gp-stage">Starting question generator…</div>
-      </div>`;
+    overlay.innerHTML=`<div class="gp-card"><div class="gp-top"><div class="gp-icon">↻</div><div class="gp-copy"><h3>Menyiapkan 25 soal baru…</h3><p>Memilih set baru dan mengecek duplikasi.</p></div><div class="gp-value">0%</div></div><div class="gp-track"><div class="gp-fill"></div></div><div class="gp-stage">Memulai generator…</div></div>`;
     document.body.appendChild(overlay);
     fill=overlay.querySelector('.gp-fill');
     percentEl=overlay.querySelector('.gp-value');
@@ -54,62 +36,35 @@
     return overlay;
   }
 
-  function stageFor(p){
-    if(p<24)return 'Selecting 25 distinct questions…';
-    if(p<48)return 'Checking duplicate and near-duplicate patterns…';
-    if(p<70)return 'Validating question quality and answer choices…';
-    if(p<90)return 'Replacing the previous 25-question set…';
-    return 'Finalizing your new question set…';
-  }
-
   function setProgress(value,stage){
     ensureOverlay();
-    current=Math.max(0,Math.min(100,Math.round(value)));
-    fill.style.width=`${current}%`;
-    percentEl.textContent=`${current}%`;
-    stageEl.textContent=stage||stageFor(current);
-    overlay.querySelector('.gp-track')?.setAttribute('aria-valuenow',String(current));
+    const p=Math.max(0,Math.min(100,Math.round(value)));
+    fill.style.width=`${p}%`;
+    percentEl.textContent=`${p}%`;
+    if(stage)stageEl.textContent=stage;
   }
 
   function showProgress(){
     ensureOverlay();
-    clearInterval(timer);
     overlay.classList.remove('done');
     overlay.classList.add('show');
-    overlay.setAttribute('aria-busy','true');
     document.documentElement.style.overflow='hidden';
-    titleEl.textContent='Generating new questions, please wait....';
-    current=6;
-    setProgress(current,'Starting question generator…');
-    timer=setInterval(()=>{
-      if(current>=88)return;
-      const step=current<35?5:current<65?3:2;
-      setProgress(Math.min(88,current+step));
-    },180);
-  }
-
-  async function finishProgress(){
-    clearInterval(timer);
-    setProgress(96,'Saving the new question set…');
-    await sleep(220);
-    overlay.classList.add('done');
-    overlay.setAttribute('aria-busy','false');
-    titleEl.textContent='25 new questions are ready';
-    setProgress(100,'Done. Opening the refreshed module…');
-    await sleep(420);
+    titleEl.textContent='Menyiapkan 25 soal baru…';
+    setProgress(18,'Memilih set soal baru…');
   }
 
   function hideProgress(){
-    clearInterval(timer);
-    if(overlay)overlay.classList.remove('show','done');
+    overlay?.classList.remove('show','done');
     document.documentElement.style.overflow='';
   }
 
   function toast(msg){
     const el=document.getElementById('toast');
     if(!el)return;
-    el.textContent=msg;el.classList.remove('hidden');
-    clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add('hidden'),4500);
+    el.textContent=msg;
+    el.classList.remove('hidden');
+    clearTimeout(toast.t);
+    toast.t=setTimeout(()=>el.classList.add('hidden'),3200);
   }
 
   function clearModuleProgress(mid){
@@ -134,19 +89,31 @@
     const oldText=button?.textContent||'Generate Questions';
     if(button){button.disabled=true;button.textContent='Generating…';}
     showProgress();
-    const minimum=sleep(1350);
     try{
+      setProgress(42,'Mengecek duplikasi dan kualitas…');
       const active=await api.reserveNew(mid);
       clearModuleProgress(mid);
-      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length,meta:{databaseBank:true,engine:'v25-distinct-root',replaceAll25:true,progressNotification:true}});}catch(e){}
-      await minimum;
-      await finishProgress();
-      sessionStorage.setItem('gbpAutoOpenModule',String(mid));
-      sessionStorage.setItem('gbpGenerationToast','25 soal lama sudah diganti penuh dengan 25 soal baru yang berbeda.');
-      location.reload();
+      setProgress(82,'Memasang 25 soal baru…');
+      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length,meta:{databaseBank:true,engine:'v25-distinct-root',replaceAll25:true,noReload:true}});}catch(e){}
+      await sleep(120);
+      const app=window.GBPApp;
+      if(app?.startModule){
+        app.startModule(mid);
+        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+        overlay.classList.add('done');
+        titleEl.textContent='25 soal baru siap';
+        setProgress(100,'Selesai. Modul langsung diperbarui tanpa reload.');
+        await sleep(180);
+        hideProgress();
+        window.scrollTo({top:0,behavior:'smooth'});
+        toast('25 soal baru sudah aktif tanpa reload halaman.');
+      }else{
+        sessionStorage.setItem('gbpAutoOpenModule',String(mid));
+        sessionStorage.setItem('gbpGenerationToast','25 soal baru sudah aktif.');
+        location.reload();
+      }
     }catch(err){
       console.error(err);
-      await sleep(300);
       hideProgress();
       if(button){button.disabled=false;button.textContent=oldText;}
       toast('Belum tersedia 25 soal baru yang benar-benar berbeda. Coba generate kembali.');
@@ -165,5 +132,5 @@
     runGenerate(mid,button);
   },true);
 
-  window.GBPGenerateProgress={show:showProgress,set:setProgress,finish:finishProgress,hide:hideProgress};
+  window.GBPGenerateProgress={show:showProgress,set:setProgress,hide:hideProgress};
 })();
