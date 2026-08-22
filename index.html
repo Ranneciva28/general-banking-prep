@@ -9,9 +9,26 @@
   <meta name="theme-color" content="#2454e6" />
   <meta name="description" content="General Banking Prep — quiz trainer 5-Day untuk persiapan General Banking Program." />
   <title>General Banking Prep</title>
+  <style id="bootLoadingCriticalCss">
+    html.gbp-booting,html.gbp-booting body{overflow:hidden!important}
+    html.gbp-booting .app-layout{filter:blur(9px);transform:scale(1.004);pointer-events:none!important;user-select:none!important}
+    #bootLoadingOverlay{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(15,23,42,.38);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;opacity:1;transition:opacity .22s ease}
+    #bootLoadingOverlay[hidden]{display:none!important}
+    #bootLoadingOverlay.gbp-boot-done{opacity:0}
+    .boot-loading-card{width:min(440px,calc(100vw - 40px));background:rgba(255,255,255,.97);border:1px solid rgba(226,232,240,.9);border-radius:20px;padding:24px;box-shadow:0 24px 80px rgba(15,23,42,.28);color:#0f172a}
+    .boot-loading-kicker{font-size:11px;font-weight:800;letter-spacing:.11em;color:#2454e6;margin-bottom:8px}
+    .boot-loading-title{font-size:20px;font-weight:800;line-height:1.3;margin:0 0 7px}
+    .boot-loading-status{font-size:13px;line-height:1.5;color:#64748b;min-height:20px}
+    .boot-loading-row{display:flex;align-items:center;gap:12px;margin-top:18px}
+    .boot-loading-track{height:9px;flex:1;background:#e8edf7;border-radius:999px;overflow:hidden}
+    .boot-loading-bar{height:100%;width:8%;background:#2454e6;border-radius:inherit;transition:width .18s ease}
+    .boot-loading-pct{width:42px;text-align:right;font-size:12px;font-weight:800;color:#2454e6}
+    .boot-loading-retry{display:block;width:100%;margin-top:14px;border:1px solid #cbd5e1;background:#fff;color:#2454e6;border-radius:11px;padding:10px 12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+  </style>
+  <script>document.documentElement.classList.add('gbp-booting');</script>
   <script>
     (()=>{
-      const BUILD='2026.08.22.1055';
+      const BUILD='2026.08.22.1105';
       const KEY='gbpForcedCacheBuild';
       const clearRuntime=async()=>{
         try{if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()));}}catch(e){}
@@ -41,10 +58,22 @@
       })();
     })();
   </script>
-  <link rel="stylesheet" href="css/style.css?v=2026.08.22.1055" />
-  <link rel="stylesheet" href="css/v5.css?v=2026.08.22.1055" />
+  <link rel="stylesheet" href="css/style.css?v=2026.08.22.1105" />
+  <link rel="stylesheet" href="css/v5.css?v=2026.08.22.1105" />
 </head>
 <body>
+  <div id="bootLoadingOverlay" role="status" aria-live="polite" aria-hidden="false">
+    <div class="boot-loading-card">
+      <div class="boot-loading-kicker">GENERAL BANKING PREP</div>
+      <div class="boot-loading-title">Loading your learning workspace</div>
+      <div class="boot-loading-status" id="bootLoadingStatus">Loading application....</div>
+      <div class="boot-loading-row">
+        <div class="boot-loading-track"><div class="boot-loading-bar" id="bootLoadingBar"></div></div>
+        <div class="boot-loading-pct" id="bootLoadingPct">8%</div>
+      </div>
+      <button class="boot-loading-retry" id="bootLoadingRetry" type="button" hidden>Reload safely</button>
+    </div>
+  </div>
   <div class="app-layout">
     <aside class="sidebar" id="sidebar">
       <div class="brand" data-view="dashboardView" role="button" tabindex="0">
@@ -267,24 +296,25 @@
 
   <div id="toast" class="toast hidden"></div>
   <div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
-  <script src="js/cache-control.js?v=2026.08.22.1055"></script>
-  <script src="js/questions.js?v=2026.08.22.1055"></script>
-  <script src="js/material-bank-core.js?v=2026.08.22.1055"></script>
-  <script src="js/material-bank-d1.js?v=2026.08.22.1055"></script>
-  <script src="js/material-bank-d2.js?v=2026.08.22.1055"></script>
-  <script src="js/material-bank-d3.js?v=2026.08.22.1055"></script>
-  <script src="js/material-bank-d4d5.js?v=2026.08.22.1055"></script>
-  <script src="js/material-bank-extra.js?v=2026.08.22.1055"></script>
-  <script src="js/bridge-module.js?v=2026.08.22.1055"></script>
-  <script src="js/bridge-category.js?v=2026.08.22.1055"></script>
-  <script src="js/nupmk-modules.js?v=2026.08.22.1055"></script>
-  <script src="js/v5-patch.js?v=2026.08.22.1055"></script>
-  <script src="js/v23-quality-bank.js?v=2026.08.22.1055"></script>
-  <script src="js/generate-progress.js?v=2026.08.22.1055"></script>
-  <script src="js/v14-db-bank.js?v=2026.08.22.1055"></script>
-  <script src="js/v16-dedupe.js?v=2026.08.22.1055"></script>
-  <script src="js/app.js?v=2026.08.22.1055"></script>
-  <script src="js/v10-usage-watch.js?v=2026.08.22.1055"></script>
-  <script src="js/nupmk-ui.js?v=2026.08.22.1055"></script>
+  <script src="js/cache-control.js?v=2026.08.22.1105"></script>
+  <script src="js/questions.js?v=2026.08.22.1105"></script>
+  <script src="js/material-bank-core.js?v=2026.08.22.1105"></script>
+  <script src="js/material-bank-d1.js?v=2026.08.22.1105"></script>
+  <script src="js/material-bank-d2.js?v=2026.08.22.1105"></script>
+  <script src="js/material-bank-d3.js?v=2026.08.22.1105"></script>
+  <script src="js/material-bank-d4d5.js?v=2026.08.22.1105"></script>
+  <script src="js/material-bank-extra.js?v=2026.08.22.1105"></script>
+  <script src="js/bridge-module.js?v=2026.08.22.1105"></script>
+  <script src="js/bridge-category.js?v=2026.08.22.1105"></script>
+  <script src="js/nupmk-modules.js?v=2026.08.22.1105"></script>
+  <script src="js/v5-patch.js?v=2026.08.22.1105"></script>
+  <script src="js/v23-quality-bank.js?v=2026.08.22.1105"></script>
+  <script src="js/generate-progress.js?v=2026.08.22.1105"></script>
+  <script src="js/v14-db-bank.js?v=2026.08.22.1105"></script>
+  <script src="js/v16-dedupe.js?v=2026.08.22.1105"></script>
+  <script src="js/app.js?v=2026.08.22.1105"></script>
+  <script src="js/v10-usage-watch.js?v=2026.08.22.1105"></script>
+  <script src="js/nupmk-ui.js?v=2026.08.22.1105"></script>
+  <script src="js/boot-loading.js?v=2026.08.22.1105"></script>
 </body>
 </html>
