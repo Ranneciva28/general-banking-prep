@@ -59,7 +59,7 @@
     if(p<48)return 'Checking duplicate and near-duplicate patterns…';
     if(p<70)return 'Validating question quality and answer choices…';
     if(p<90)return 'Replacing the previous 25-question set…';
-    return 'Finalizing your new question set…';
+    return 'Loading the new questions in this module…';
   }
 
   function setProgress(value,stage){
@@ -90,13 +90,14 @@
 
   async function finishProgress(){
     clearInterval(timer);
-    setProgress(96,'Saving the new question set…');
-    await sleep(220);
+    setProgress(94,'Loading the new questions in this module…');
+    await sleep(180);
+    setProgress(98,'Refreshing this module…');
+    await sleep(160);
     overlay.classList.add('done');
     overlay.setAttribute('aria-busy','false');
     titleEl.textContent='25 new questions are ready';
-    setProgress(100,'Done. Opening the refreshed module…');
-    await sleep(420);
+    setProgress(100,'Done. Staying in the same module.');
   }
 
   function hideProgress(){
@@ -128,22 +129,32 @@
     return q?Number(q.moduleId):null;
   }
 
+  async function openFreshModule(mid){
+    const app=window.GBPApp;
+    if(!app?.startModule)throw new Error('module-runtime-not-ready');
+    app.startModule(mid);
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    window.scrollTo({top:0,behavior:'auto'});
+  }
+
   async function runGenerate(mid,button){
     const api=window.GBPDatabaseQuestionBank;
     if(!api?.reserveNew){toast('Question generator belum siap. Refresh halaman lalu coba lagi.');return;}
     const oldText=button?.textContent||'Generate Questions';
     if(button){button.disabled=true;button.textContent='Generating…';}
     showProgress();
-    const minimum=sleep(1350);
+    const minimum=sleep(1100);
     try{
       const active=await api.reserveNew(mid);
       clearModuleProgress(mid);
-      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length,meta:{databaseBank:true,engine:'v25-distinct-root',replaceAll25:true,progressNotification:true}});}catch(e){}
+      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length,meta:{databaseBank:true,engine:'v25-distinct-root-lite',replaceAll25:true,progressNotification:true,inPlaceRefresh:true}});}catch(e){}
       await minimum;
+      setProgress(91,'Applying 25 new questions to this module…');
+      await openFreshModule(mid);
       await finishProgress();
-      sessionStorage.setItem('gbpAutoOpenModule',String(mid));
-      sessionStorage.setItem('gbpGenerationToast','25 soal lama sudah diganti penuh dengan 25 soal baru yang berbeda.');
-      location.reload();
+      await sleep(260);
+      hideProgress();
+      toast('25 soal baru sudah aktif di module ini.');
     }catch(err){
       console.error(err);
       await sleep(300);
@@ -165,5 +176,5 @@
     runGenerate(mid,button);
   },true);
 
-  window.GBPGenerateProgress={show:showProgress,set:setProgress,finish:finishProgress,hide:hideProgress};
+  window.GBPGenerateProgress={show:showProgress,set:setProgress,finish:finishProgress,hide:hideProgress,run:runGenerate};
 })();
