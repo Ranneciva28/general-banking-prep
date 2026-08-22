@@ -31,26 +31,15 @@
         const options=shuffle([term,...distractors],`${mid}:${i}:o`);
         const question=customQ||templates[i%templates.length](clue);
         bank.push({
-          id,
-          day:Number(meta.day)||1,
-          moduleId:mid,
-          moduleName:meta.moduleName,
-          question,
-          options,
-          answer:term,
-          explanation:customExp||`${term}: ${clue}.`,
-          source:sourceMap[mid]||`Materi General Banking · ${meta.moduleName}`,
-          difficulty:i%7===0?'Challenge':i%3===0?'Sulit':'Sedang-Sulit',
-          skill:i%4===0?'Analisis Kasus':'Konsep',
-          generated:false,
-          materialGrounded:true,
-          rootQuestionId:id,
-          baseId:id,
-          conceptSignature:`material-root:${id}`
+          id,day:Number(meta.day)||1,moduleId:mid,moduleName:meta.moduleName,question,options,answer:term,
+          explanation:customExp||`${term}: ${clue}.`,source:sourceMap[mid]||`Materi General Banking · ${meta.moduleName}`,
+          difficulty:i%7===0?'Challenge':i%3===0?'Sulit':'Sedang-Sulit',skill:i%4===0?'Analisis Kasus':'Konsep',
+          generated:false,materialGrounded:true,rootQuestionId:id,baseId:id,conceptSignature:`material-root:${id}`
         });
       });
     }
-    window.__GBP_SOURCE_BANK__=bank.map(q=>({...q,options:Array.isArray(q.options)?[...q.options]:q.options}));
+    // Keep a live reference. The old implementation cloned the entire growing bank after every material file.
+    window.__GBP_SOURCE_BANK__=bank;
   }
   window.GBPAddMaterialQuestions=add;
 })();
