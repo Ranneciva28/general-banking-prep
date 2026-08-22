@@ -1,0 +1,127 @@
+name: V25 distinct question rollout
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v25-distinct-rollout.yml'
+permissions:
+  contents: write
+jobs:
+  audit-and-rollout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Audit 25 default and zero-overlap generation
+        run: |
+          cat > /tmp/audit-v25.js <<'NODE'
+          const storage={};
+          global.window={QUESTION_BANK:[]};
+          global.localStorage={getItem:k=>storage[k]??null,setItem:(k,v)=>storage[k]=String(v),removeItem:k=>delete storage[k]};
+          global.sessionStorage={getItem:()=>null,setItem:()=>{},removeItem:()=>{}};
+          global.crypto=require('crypto').webcrypto;
+          global.document={addEventListener:()=>{},querySelector:()=>null,querySelectorAll:()=>[],getElementById:()=>null,referrer:'',createElement:()=>({})};
+          global.location={reload(){},pathname:'/'};
+          global.navigator={userAgent:'audit',language:'id-ID'};
+          global.screen={width:1440,height:900};
+          global.confirm=()=>true;
+          global.fetch=async(url,init={})=>{let body={};try{body=JSON.parse(init.body||'{}')}catch(e){}return{ok:true,text:async()=>'',json:async()=>({accepted_count:Number(body.p_requested_count)||25,accepted_slots:(body.p_questions||[]).map(x=>x.slot)})}};
+
+          require(process.cwd()+'/js/questions.js');
+          require(process.cwd()+'/js/material-bank-core.js');
+          require(process.cwd()+'/js/material-bank-d1.js');
+          require(process.cwd()+'/js/material-bank-d2.js');
+          require(process.cwd()+'/js/material-bank-d3.js');
+          require(process.cwd()+'/js/material-bank-d4d5.js');
+          require(process.cwd()+'/js/bridge-module.js');
+          require(process.cwd()+'/js/bridge-category.js');
+          require(process.cwd()+'/js/nupmk-modules.js');
+          require(process.cwd()+'/js/v23-quality-bank.js');
+
+          const source=window.__GBP_SOURCE_BANK__||[];
+          let fail=false;
+          for(let mid=1;mid<=35;mid++){
+            const rows=source.filter(q=>Number(q.moduleId)===mid);
+            const roots=new Set(rows.map(q=>String(q.rootQuestionId||q.baseId||q.id)));
+            const max=Math.max(0,...rows.map(q=>String(q.question||'').length));
+            console.log(`SOURCE M${String(mid).padStart(2,'0')} rows=${rows.length} roots=${roots.size} maxStem=${max}`);
+            if(rows.length<50||roots.size<50||max>205)fail=true;
+          }
+          if(fail){console.error('SOURCE_GATE=FAIL');process.exit(1);}
+
+          window.QUESTION_BANK.splice(0,window.QUESTION_BANK.length,...source);
+          require(process.cwd()+'/js/v14-db-bank.js');
+          const api=window.GBPDatabaseQuestionBank;
+          for(let mid=1;mid<=35;mid++){
+            const rows=window.QUESTION_BANK.filter(q=>Number(q.moduleId)===mid);
+            const roots=new Set(rows.map(q=>String(q.rootQuestionId||q.baseId||q.id)));
+            let near=0;
+            for(let i=0;i<rows.length;i++)for(let j=i+1;j<rows.length;j++)if(api.nearDuplicate(rows[i],rows[j],.84))near++;
+            console.log(`DEFAULT M${String(mid).padStart(2,'0')} count=${rows.length} roots=${roots.size} near=${near}`);
+            if(rows.length!==25||roots.size!==25||near)fail=true;
+          }
+          if(fail){console.error('DEFAULT_GATE=FAIL');process.exit(1);}
+
+          (async()=>{
+            for(let mid=1;mid<=35;mid++){
+              await api.ensureModule(mid);
+              const old=window.QUESTION_BANK.filter(q=>Number(q.moduleId)===mid);
+              await api.reserveNew(mid);
+              const fresh=window.QUESTION_BANK.filter(q=>Number(q.moduleId)===mid);
+              const oldRoots=new Set(old.map(q=>String(q.rootQuestionId||q.baseId||q.id)));
+              const overlap=fresh.filter(q=>oldRoots.has(String(q.rootQuestionId||q.baseId||q.id))).length;
+              let nearOld=0,nearFresh=0;
+              for(const q of fresh)for(const x of old)if(api.nearDuplicate(q,x,.84))nearOld++;
+              for(let i=0;i<fresh.length;i++)for(let j=i+1;j<fresh.length;j++)if(api.nearDuplicate(fresh[i],fresh[j],.84))nearFresh++;
+              console.log(`GENERATE M${String(mid).padStart(2,'0')} count=${fresh.length} overlap=${overlap} nearOld=${nearOld} nearFresh=${nearFresh}`);
+              if(fresh.length!==25||overlap||nearOld||nearFresh)fail=true;
+            }
+            console.log(fail?'V25_AUDIT=FAIL':'V25_AUDIT=PASS');
+            process.exit(fail?1:0);
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          node /tmp/audit-v25.js
+
+      - name: Load material banks before NUPMK and bump build
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,re
+          old='2026.08.22.0900'; new='2026.08.22.0920'
+          p=Path('index.html'); s=p.read_text()
+          needle=f'  <script src="js/questions.js?v={old}"></script>\n'
+          extra=''.join([
+            f'  <script src="js/material-bank-core.js?v={new}"></script>\n',
+            f'  <script src="js/material-bank-d1.js?v={new}"></script>\n',
+            f'  <script src="js/material-bank-d2.js?v={new}"></script>\n',
+            f'  <script src="js/material-bank-d3.js?v={new}"></script>\n',
+            f'  <script src="js/material-bank-d4d5.js?v={new}"></script>\n'
+          ])
+          if 'material-bank-core.js' not in s:
+            s=s.replace(needle,needle+extra)
+          s=s.replace(old,new)
+          p.write_text(s)
+          c=Path('js/cache-control.js'); x=c.read_text()
+          x=x.replace("'gbpDbBankV24'","'gbpDbBankV24','gbpDbBankV25'").replace("'gbpQuestionSeenV24'","'gbpQuestionSeenV24','gbpQuestionSeenV25'")
+          x=re.sub(r'gbpCacheNotice-20260822-[0-9]+','gbpCacheNotice-20260822-0920',x)
+          c.write_text(x)
+          Path('version.json').write_text(json.dumps({'build':new,'forceCacheReset':True},separators=(',',':')))
+          PY
+          node --check js/material-bank-core.js
+          node --check js/material-bank-d1.js
+          node --check js/material-bank-d2.js
+          node --check js/material-bank-d3.js
+          node --check js/material-bank-d4d5.js
+          node --check js/v23-quality-bank.js
+          node --check js/v14-db-bank.js
+          node --check js/cache-control.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html js/cache-control.js version.json
+          git commit -m "Activate 25-question distinct-root bank for every module"
+          git push
