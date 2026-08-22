@@ -1,0 +1,93 @@
+name: V23 static HOTS bank rollout
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v23-static-bank-rollout.yml'
+permissions:
+  contents: write
+jobs:
+  build-static-bank:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate precomputed HOTS bank
+        run: |
+          cat > /tmp/build-bank.js <<'NODE'
+          const fs=require('fs');
+          const storage={};
+          global.window={QUESTION_BANK:[]};
+          global.localStorage={getItem:k=>storage[k]??null,setItem:(k,v)=>storage[k]=String(v),removeItem:k=>delete storage[k]};
+          global.sessionStorage={getItem:()=>null,setItem:()=>{},removeItem:()=>{}};
+          global.crypto=require('crypto').webcrypto;
+          global.document={addEventListener:()=>{},querySelector:()=>null,querySelectorAll:()=>[],getElementById:()=>null,referrer:'',createElement:()=>({})};
+          global.location={reload(){},pathname:'/'};global.navigator={userAgent:'build',language:'id-ID'};global.screen={width:1440,height:900};
+          require(process.cwd()+'/js/questions.js');
+          require(process.cwd()+'/js/bridge-module.js');
+          require(process.cwd()+'/js/bridge-category.js');
+          require(process.cwd()+'/js/nupmk-modules.js');
+          require(process.cwd()+'/js/v16-source-variants.js');
+          require(process.cwd()+'/js/v22-nupmk-quality.js');
+          require(process.cwd()+'/js/v23-source-dedupe.js');
+          const bank=window.__GBP_SOURCE_BANK__||[];
+          const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9à-öø-ÿ]+/giu,' ').replace(/\s+/g,' ').trim();
+          const opt=q=>(q.options||[]).map(norm).sort().join('|');
+          let fail=false,total=0;
+          for(let mid=1;mid<=35;mid++){
+            const rows=bank.filter(q=>Number(q.moduleId)===mid),stems=new Set(),opts=new Set();let dup=0;
+            for(const q of rows){const sk=norm(q.question),ok=opt(q);if(stems.has(sk)||opts.has(ok))dup++;stems.add(sk);opts.add(ok);}
+            console.log(`STATIC SOURCE M${String(mid).padStart(2,'0')} count=${rows.length} dup=${dup}`);total+=rows.length;
+            if(rows.length<25||dup)fail=true;
+          }
+          if(fail)process.exit(1);
+          const header="// Precomputed audited HOTS bank. Generated at build time; no browser-side question authoring loop.\n";
+          fs.writeFileSync('js/v23-quality-bank.js',header+'window.__GBP_SOURCE_BANK__='+JSON.stringify(bank)+';\nwindow.__GBP_QUALITY_BANK_VERSION__="V23-static";\n');
+          console.log(`WROTE ${total} questions, ${fs.statSync('js/v23-quality-bank.js').size} bytes`);
+          NODE
+          node /tmp/build-bank.js
+          node --check js/v23-quality-bank.js
+      - name: Audit static bank with live selector
+        run: |
+          cat > /tmp/audit-static.js <<'NODE'
+          const storage={};global.window={QUESTION_BANK:[]};global.localStorage={getItem:k=>storage[k]??null,setItem:(k,v)=>storage[k]=String(v),removeItem:k=>delete storage[k]};global.sessionStorage={getItem:()=>null,setItem:()=>{},removeItem:()=>{}};global.crypto=require('crypto').webcrypto;
+          global.document={addEventListener:()=>{},querySelector:()=>null,querySelectorAll:()=>[],getElementById:()=>null,referrer:'',createElement:()=>({})};global.location={reload(){},pathname:'/'};global.navigator={userAgent:'audit',language:'id-ID'};global.screen={width:1440,height:900};global.confirm=()=>true;
+          global.fetch=async(url,init={})=>{let b={};try{b=JSON.parse(init.body||'{}')}catch(e){}return{ok:true,text:async()=>'',json:async()=>({accepted_count:Number(b.p_requested_count)||25,accepted_slots:(b.p_questions||[]).map(x=>x.slot)})}};
+          require(process.cwd()+'/js/questions.js');require(process.cwd()+'/js/v23-quality-bank.js');window.QUESTION_BANK.splice(0,window.QUESTION_BANK.length,...window.__GBP_SOURCE_BANK__);require(process.cwd()+'/js/v14-db-bank.js');
+          const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9à-öø-ÿ]+/giu,' ').replace(/\s+/g,' ').trim(),opt=q=>(q.options||[]).map(norm).sort().join('|');
+          let fail=false;
+          for(let mid=1;mid<=35;mid++){
+            const preview=window.QUESTION_BANK.filter(q=>Number(q.moduleId)===mid),s=new Set(),o=new Set(),c=new Set();let d=0;for(const q of preview){const a=norm(q.question),b=opt(q),k=norm(q.conceptSignature||`${q.rootQuestionId||q.baseId}|${q.variantMode||''}`);if(s.has(a)||o.has(b)||c.has(k))d++;s.add(a);o.add(b);c.add(k);}if(preview.length!==25||d)fail=true;
+          }
+          (async()=>{for(let mid=1;mid<=35;mid++){try{const slots=await window.GBPDatabaseQuestionBank.reserveNew(mid);const rows=window.QUESTION_BANK.filter(q=>Number(q.moduleId)===mid),s=new Set(),o=new Set(),c=new Set();let d=0;for(const q of rows){const a=norm(q.question),b=opt(q),k=norm(q.conceptSignature||`${q.rootQuestionId||q.baseId}|${q.variantMode||''}`);if(s.has(a)||o.has(b)||c.has(k))d++;s.add(a);o.add(b);c.add(k);}console.log(`STATIC GENERATE M${mid} slots=${slots.length} active=${rows.length} dup=${d}`);if(slots.length!==25||rows.length!==25||d)fail=true;}catch(e){console.log(`M${mid} ERROR ${e.message}`);fail=true;}}console.log(fail?'STATIC_AUDIT=FAIL':'STATIC_AUDIT=PASS');process.exit(fail?1:0)})();
+          NODE
+          node /tmp/audit-static.js
+      - name: Switch production loader to static bank
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          old='2026.08.22.0840'; new='2026.08.22.0855'
+          p=Path('index.html'); s=p.read_text()
+          for line in [
+            f'  <script src="js/v16-source-variants.js?v={old}"></script>\n',
+            f'  <script src="js/v22-nupmk-quality.js?v={old}"></script>\n',
+            f'  <script src="js/v23-source-dedupe.js?v={old}"></script>\n'
+          ]: s=s.replace(line,'')
+          needle=f'  <script src="js/v5-patch.js?v={old}"></script>\n'
+          s=s.replace(needle,needle+f'  <script src="js/v23-quality-bank.js?v={old}"></script>\n')
+          s=s.replace(old,new)
+          p.write_text(s)
+          c=Path('js/cache-control.js'); x=c.read_text().replace('gbpCacheNotice-20260822-0840','gbpCacheNotice-20260822-0855'); c.write_text(x)
+          Path('version.json').write_text(json.dumps({'build':new,'forceCacheReset':True},separators=(',',':')))
+          PY
+          node --check js/v23-quality-bank.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/v23-quality-bank.js index.html js/cache-control.js version.json
+          git commit -m "Precompute HOTS bank for fast reliable page load"
+          git push
