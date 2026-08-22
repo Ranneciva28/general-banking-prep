@@ -91,10 +91,12 @@
     showProgress();
     try{
       setProgress(42,'Mengecek duplikasi dan kualitas…');
-      const active=await api.reserveNew(mid);
+      await api.reserveNew(mid);
+      setProgress(66,'Mengecek perbedaan inti konsep…');
+      const active=window.GBPSemanticDedupe?.rebalanceModule?.(mid)||((window.QUESTION_BANK||[]).filter(q=>Number(q.moduleId)===Number(mid)));
       clearModuleProgress(mid);
-      setProgress(82,'Memasang 25 soal baru…');
-      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length,meta:{databaseBank:true,engine:'v25-distinct-root',replaceAll25:true,noReload:true}});}catch(e){}
+      setProgress(82,'Memasang 25 soal dengan learning objective berbeda…');
+      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length,meta:{databaseBank:true,engine:'v25-distinct-root',replaceAll25:true,noReload:true,semanticDiversity:true}});}catch(e){}
       await sleep(120);
       const app=window.GBPApp;
       if(app?.startModule){
@@ -102,11 +104,11 @@
         await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
         overlay.classList.add('done');
         titleEl.textContent='25 soal baru siap';
-        setProgress(100,'Selesai. Modul langsung diperbarui tanpa reload.');
+        setProgress(100,'Selesai. Substansi soal sudah diseimbangkan.');
         await sleep(180);
         hideProgress();
         window.scrollTo({top:0,behavior:'smooth'});
-        toast('25 soal baru sudah aktif tanpa reload halaman.');
+        toast('25 soal baru aktif dengan inti konsep yang lebih beragam.');
       }else{
         sessionStorage.setItem('gbpAutoOpenModule',String(mid));
         sessionStorage.setItem('gbpGenerationToast','25 soal baru sudah aktif.');
