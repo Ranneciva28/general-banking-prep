@@ -6,11 +6,22 @@
   const hash=str=>{let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
   const uniq=a=>[...new Set((a||[]).map(clean).filter(Boolean))];
   const shuffle=(a,seed)=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=hash(`${seed}:${i}`)%(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+
+  // Generic wording is removed from the learning-objective fingerprint so
+  // paraphrases of the same fact resolve to the same concept signature.
+  const conceptStop=new Set(`yang dan atau untuk pada dalam dengan dari ke di ini itu tersebut sebuah suatu seorang adalah ialah merupakan sebagai agar serta paling lebih tepat sesuai apa apakah bagaimana mengapa manakah konsep kondisi konteks istilah merujuk mengacu dimaksud berarti memiliki menunjukkan menggambarkan mencerminkan menjelaskan peningkatan penurunan meningkat menurun dicatat mencatat sisi akun saldo normal transaksi nilai dokumen dilakukan melakukan terjadi ketika saat`.split(' '));
+  function conceptFingerprint(term,clue){
+    const tokens=norm(`${term} ${clue}`).split(' ').filter(t=>t.length>2&&!conceptStop.has(t));
+    const key=[...new Set(tokens)].sort();
+    if(key.length>=2)return `material-concept:${key.join('|')}`;
+    return `material-concept:${norm(term)}|${norm(clue)}`;
+  }
+
   const templates=[
     clue=>`${clue} Istilah yang tepat?`,
     clue=>`Konsep apa yang sesuai dengan kondisi ini: ${clue}?`,
     clue=>`${clue} Apa yang dimaksud?`,
-    clue=>`Dalam konteks modul ini, ${clue} Merujuk pada apa?`
+    clue=>`${clue} Merujuk pada apa?`
   ];
 
   function add(data,sourceMap={}){
@@ -46,7 +57,7 @@
           materialGrounded:true,
           rootQuestionId:id,
           baseId:id,
-          conceptSignature:`material-root:${id}`
+          conceptSignature:conceptFingerprint(term,clue)
         });
       });
     }
