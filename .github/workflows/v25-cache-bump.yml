@@ -1,0 +1,32 @@
+name: V25 cache bump
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v25-cache-bump.yml'
+permissions:
+  contents: write
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bump build
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          old='2026.08.22.0920'; new='2026.08.22.0925'
+          p=Path('index.html'); p.write_text(p.read_text().replace(old,new))
+          c=Path('js/cache-control.js'); c.write_text(c.read_text().replace('gbpCacheNotice-20260822-0920','gbpCacheNotice-20260822-0925'))
+          Path('version.json').write_text(json.dumps({'build':new,'forceCacheReset':True},separators=(',',':')))
+          PY
+          node --check js/cache-control.js
+          node --check js/v16-dedupe.js
+          node --check js/v14-db-bank.js
+          node --check js/v23-quality-bank.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html js/cache-control.js version.json
+          git commit -m "Bump V25 cache after module-scope dedupe fix"
+          git push
