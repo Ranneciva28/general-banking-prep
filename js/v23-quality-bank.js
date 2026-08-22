@@ -42,8 +42,6 @@
       const re=new RegExp(`([a-zà-öø-ÿ0-9),;:]\\s+)${escaped}\\b`,'giu');
       s=s.replace(re,(m,prefix)=>prefix+word.toLocaleLowerCase('id-ID'));
     }
-
-    // Capitalize only the actual beginning of the question after cleanup.
     return cap(clean(s));
   }
 
@@ -104,11 +102,12 @@
     const question=compact(base.question),stem=norm(question),stemKey=`${mid}|${stem}`;
     if(!stem||banned.test(question)||seenStems.has(stemKey))continue;
     seenRoots.add(rootKey);seenStems.add(stemKey);
-    out.push({...base,id:`V25-M${mid}-${root}`,question,options,answer:options[answerIndex],questionType:/\bKECUALI\b/i.test(question)?'Kecuali':(base.skill==='Analisis Kasus'?'Analisis Kasus':'Pilihan Ganda'),rootQuestionId:root,baseId:root,variantMode:'full-root-eyd',conceptSignature:`m${mid}|root:${root}`,generated:!!base.generated,qualityVersion:'V25-full-stem-eyd'});
+    const conceptSignature=String(base.conceptSignature||'').startsWith('material-concept:')?base.conceptSignature:`m${mid}|root:${root}`;
+    out.push({...base,id:`V25-M${mid}-${root}`,question,options,answer:options[answerIndex],questionType:/\bKECUALI\b/i.test(question)?'Kecuali':(base.skill==='Analisis Kasus'?'Analisis Kasus':'Pilihan Ganda'),rootQuestionId:root,baseId:root,variantMode:'full-root-eyd',conceptSignature,generated:!!base.generated,qualityVersion:'V25-full-stem-eyd-concept'});
   }
 
   if(out.length){
     window.__GBP_SOURCE_BANK__=out;
-    window.__GBP_QUALITY_BANK_VERSION__='V25-full-stem-eyd';
+    window.__GBP_QUALITY_BANK_VERSION__='V25-full-stem-eyd-concept';
   }
 })();
