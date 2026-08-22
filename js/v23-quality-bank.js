@@ -79,14 +79,17 @@
   const seenRoots=new Set(),seenStems=new Set(),out=[];
   for(const base of SOURCE){
     if(!base||!Array.isArray(base.options)||base.options.length!==4||banned.test(clean(base.question)))continue;
-    const root=rootId(base);if(!root||seenRoots.has(root))continue;
+    const root=rootId(base),mid=Number(base.moduleId)||0;
+    const rootKey=`${mid}|${root}`;
+    if(!root||!mid||seenRoots.has(rootKey))continue;
     const answerIndex=base.options.findIndex(x=>norm(x)===norm(base.answer));if(answerIndex<0)continue;
     const options=base.options.map(cleanOption);if(new Set(options.map(norm)).size!==4)continue;
-    const question=compact(base.question);const stem=norm(question);if(!stem||banned.test(question)||seenStems.has(stem))continue;
-    seenRoots.add(root);seenStems.add(stem);
+    const question=compact(base.question),stem=norm(question),stemKey=`${mid}|${stem}`;
+    if(!stem||banned.test(question)||seenStems.has(stemKey))continue;
+    seenRoots.add(rootKey);seenStems.add(stemKey);
     out.push({
       ...base,
-      id:`V25-${root}`,
+      id:`V25-M${mid}-${root}`,
       question,
       options,
       answer:options[answerIndex],
@@ -94,7 +97,7 @@
       rootQuestionId:root,
       baseId:root,
       variantMode:'concise-root',
-      conceptSignature:`root:${root}`,
+      conceptSignature:`m${mid}|root:${root}`,
       generated:!!base.generated,
       qualityVersion:'V25-distinct-root'
     });
