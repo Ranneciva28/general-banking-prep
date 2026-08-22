@@ -66,3 +66,4 @@ jobs:
           git add index.html version.json
           git commit -m "Keep cache busting out of the page URL"
           git push
+# trigger
