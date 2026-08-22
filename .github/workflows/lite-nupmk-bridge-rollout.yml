@@ -1,0 +1,51 @@
+name: NUPMK BRIDGE lite rollout
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lite-nupmk-bridge-rollout.yml']
+permissions:
+  contents: write
+jobs:
+  rollout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Activate lite catalog and 3000-slot bank
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,re
+          old='2026.08.22.1110';new='2026.08.22.1140'
+          p=Path('index.html');s=p.read_text()
+          nup=f'  <script src="js/nupmk-modules.js?v={old}"></script>\n'
+          if 'js/lite-catalog.js' not in s:
+            s=s.replace(nup,nup+f'  <script src="js/lite-catalog.js?v={new}"></script>\n')
+          s=s.replace(f'  <script src="js/v5-patch.js?v={old}"></script>',f'  <script src="js/v5-lite.js?v={new}"></script>')
+          s=s.replace(old,new)
+          p.write_text(s)
+
+          v14=Path('js/v14-db-bank.js');x=v14.read_text().replace('.slice(0,5000)','.slice(0,3000)')
+          x=x.replace("engine:'v25-distinct-root'","engine:'v25-distinct-root-lite'")
+          v14.write_text(x)
+
+          c=Path('js/cache-control.js');x=c.read_text()
+          x=x.replace('unused_count:5000','unused_count:3000')
+          c.write_text(x)
+
+          Path('version.json').write_text(json.dumps({'build':new,'forceCacheReset':True},separators=(',',':')))
+          PY
+          node --check js/material-bank-core.js
+          node --check js/lite-catalog.js
+          node --check js/v5-lite.js
+          node --check js/nupmk-ui.js
+          node --check js/boot-loading.js
+          node --check js/v14-db-bank.js
+          node --check js/cache-control.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html version.json js/v14-db-bank.js js/cache-control.js
+          git commit -m "Run only NUPMK and BRIDGE with a 3000-slot bank"
+          git push
