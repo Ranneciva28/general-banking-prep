@@ -1,19 +1,14 @@
 name: V20 staging gate
 on:
-  push:
+  pull_request:
     branches: [main]
-    paths:
-      - '.github/workflows/v20-staging-gate.yml'
 permissions:
-  contents: write
+  contents: read
 jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: v19-staging
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -66,12 +61,4 @@ jobs:
             console.log(failed?'AUDIT=FAIL':'AUDIT=PASS');process.exit(failed?1:0);
           })();
           NODE
-          node /tmp/audit.js | tee v20-audit.txt
-      - name: Publish passing audit to staging
-        run: |
-          printf '\nPASS_SHA=%s\nAUDITED_AT=%s\n' "$(git rev-parse HEAD)" "$(date -u +%FT%TZ)" >> v20-audit.txt
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add v20-audit.txt
-          git commit -m "V20 staging audit passed"
-          git push origin HEAD:v19-staging
+          node /tmp/audit.js
