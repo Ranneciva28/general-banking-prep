@@ -7,8 +7,6 @@
   const uniq=a=>[...new Set((a||[]).map(clean).filter(Boolean))];
   const shuffle=(a,seed)=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=hash(`${seed}:${i}`)%(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
 
-  // Generic wording is removed from the learning-objective fingerprint so
-  // paraphrases of the same fact resolve to the same concept signature.
   const conceptStop=new Set(`yang dan atau untuk pada dalam dengan dari ke di ini itu tersebut sebuah suatu seorang adalah ialah merupakan sebagai agar serta paling lebih tepat sesuai apa apakah bagaimana mengapa manakah konsep kondisi konteks istilah merujuk mengacu dimaksud berarti memiliki menunjukkan menggambarkan mencerminkan menjelaskan peningkatan penurunan meningkat menurun dicatat mencatat sisi akun saldo normal transaksi nilai dokumen dilakukan melakukan terjadi ketika saat`.split(' '));
   function conceptFingerprint(term,clue){
     const tokens=norm(`${term} ${clue}`).split(' ').filter(t=>t.length>2&&!conceptStop.has(t));
@@ -16,13 +14,11 @@
     if(key.length>=2)return `material-concept:${key.join('|')}`;
     return `material-concept:${norm(term)}|${norm(clue)}`;
   }
-
-  const templates=[
-    clue=>`${clue} Istilah yang tepat?`,
-    clue=>`Konsep apa yang sesuai dengan kondisi ini: ${clue}?`,
-    clue=>`${clue} Apa yang dimaksud?`,
-    clue=>`${clue} Merujuk pada apa?`
-  ];
+  function directQuestion(clue){
+    let s=clean(clue).replace(/[.?!:;]+$/,'');
+    if(!s)return '';
+    return `${s} adalah?`;
+  }
 
   function add(data,sourceMap={}){
     for(const [midRaw,itemsRaw] of Object.entries(data||{})){
@@ -40,7 +36,9 @@
         const distractors=shuffle(pool,`${mid}:${i}:d`).slice(0,3);
         if(distractors.length<3)return;
         const options=shuffle([term,...distractors],`${mid}:${i}:o`);
-        const question=customQ||templates[i%templates.length](clue);
+        // Material definitions are deliberately asked directly. Avoid vague wrappers
+        // such as “Konsep apa yang sesuai dengan kondisi ini” or “merujuk pada apa”.
+        const question=customQ||directQuestion(clue);
         bank.push({
           id,
           day:Number(meta.day)||1,
