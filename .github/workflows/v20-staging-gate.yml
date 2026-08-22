@@ -1,0 +1,86 @@
+name: V20 staging gate
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v20-staging-gate.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v19-staging
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: |
+          node --check js/questions.js
+          node --check js/nupmk-modules.js
+          node --check js/v16-source-variants.js
+          node --check js/v14-db-bank.js
+      - name: Runtime bank audit
+        run: |
+          cat > /tmp/audit.js <<'NODE'
+          const storage={};
+          global.window={QUESTION_BANK:[]};
+          global.localStorage={getItem:k=>storage[k]??null,setItem:(k,v)=>storage[k]=String(v),removeItem:k=>delete storage[k]};
+          global.sessionStorage={getItem:()=>null,setItem:()=>{},removeItem:()=>{}};
+          global.crypto=require('crypto').webcrypto;
+          global.document={
+            addEventListener:()=>{},querySelector:()=>null,querySelectorAll:()=>[],getElementById:()=>null,
+            referrer:'',createElement:()=>({style:{},classList:{add(){},remove(){},contains(){return false}},appendChild(){},querySelector(){return null}})
+          };
+          global.location={reload(){},pathname:'/'};
+          global.navigator={userAgent:'Node Audit',language:'id-ID'};
+          global.screen={width:1440,height:900};
+          global.confirm=()=>true;
+          global.fetch=async (url,init={})=>{
+            let body={};try{body=JSON.parse(init.body||'{}')}catch(e){}
+            return {ok:true,text:async()=>'',json:async()=>({accepted_count:Number(body.p_requested_count)||25,accepted_slots:(body.p_questions||[]).map(x=>x.slot)})};
+          };
+          require(process.cwd()+'/js/questions.js');
+          require(process.cwd()+'/js/bridge-module.js');
+          require(process.cwd()+'/js/bridge-category.js');
+          require(process.cwd()+'/js/nupmk-modules.js');
+          require(process.cwd()+'/js/v16-source-variants.js');
+          const quality=[...(window.__GBP_SOURCE_BANK__||[])];
+          const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9à-öø-ÿ]+/giu,' ').replace(/\s+/g,' ').trim();
+          const optionKey=q=>(q.options||[]).map(norm).sort().join('|');
+          const meta=/\b(materi|slide|modul)\b/i;
+          let failed=false;
+          console.log('=== QUALITY SOURCE ===');
+          for(let mid=1;mid<=35;mid++){
+            const rows=quality.filter(q=>Number(q.moduleId)===mid),stems=new Set(),opts=new Set(),modes=new Set(),roots=new Set();let dup=0,badMeta=0,badOptions=0,short=0;
+            for(const q of rows){const sk=norm(q.question),ok=optionKey(q);if(stems.has(sk)||opts.has(ok))dup++;stems.add(sk);opts.add(ok);modes.add(q.variantMode);roots.add(q.rootQuestionId);if(meta.test(q.question))badMeta++;if(!Array.isArray(q.options)||q.options.length!==4||!q.options.includes(q.answer))badOptions++;if(String(q.question||'').length<145)short++;}
+            console.log(`M${String(mid).padStart(2,'0')} pool=${rows.length} roots=${roots.size} modes=${modes.size} dup=${dup} meta=${badMeta} badOptions=${badOptions} short=${short}`);
+            if(rows.length<25||dup||badMeta||badOptions||short)failed=true;
+          }
+          window.QUESTION_BANK.splice(0,window.QUESTION_BANK.length,...quality);
+          require(process.cwd()+'/js/v14-db-bank.js');
+          console.log('=== ACTIVE PREVIEW ===');
+          for(let mid=1;mid<=35;mid++){
+            const rows=window.QUESTION_BANK.filter(q=>Number(q.moduleId)===mid),stems=new Set(),opts=new Set(),sem=new Set();let dup=0;
+            for(const q of rows){const sk=norm(q.question),ok=optionKey(q),ck=norm(q.conceptSignature||`${q.rootQuestionId||q.baseId}|${q.variantMode||''}`);if(stems.has(sk)||opts.has(ok)||sem.has(ck))dup++;stems.add(sk);opts.add(ok);sem.add(ck);}
+            console.log(`M${String(mid).padStart(2,'0')} active=${rows.length} dup=${dup}`);
+            if(rows.length!==25||dup)failed=true;
+          }
+          (async()=>{
+            console.log('=== GENERATE NEW SET ===');
+            for(let mid=1;mid<=35;mid++){
+              try{
+                const slots=await window.GBPDatabaseQuestionBank.reserveNew(mid);
+                const rows=window.QUESTION_BANK.filter(q=>Number(q.moduleId)===mid),stems=new Set(),opts=new Set(),sem=new Set();let dup=0;
+                for(const q of rows){const sk=norm(q.question),ok=optionKey(q),ck=norm(q.conceptSignature||`${q.rootQuestionId||q.baseId}|${q.variantMode||''}`);if(stems.has(sk)||opts.has(ok)||sem.has(ck))dup++;stems.add(sk);opts.add(ok);sem.add(ck);}
+                console.log(`M${String(mid).padStart(2,'0')} generated=${slots.length} active=${rows.length} dup=${dup}`);
+                if(slots.length!==25||rows.length!==25||dup)failed=true;
+              }catch(e){console.log(`M${String(mid).padStart(2,'0')} ERROR ${e.message}`);failed=true;}
+            }
+            console.log(failed?'AUDIT=FAIL':'AUDIT=PASS');
+            process.exit(failed?1:0);
+          })();
+          NODE
+          node /tmp/audit.js
