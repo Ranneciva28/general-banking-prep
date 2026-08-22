@@ -1,3 +1,4 @@
+// Audited NUPMK HOTS layer: strict core-module mapping, no cross-topic leakage.
 (() => {
   const bank=window.__GBP_SOURCE_BANK__||[];
   if(!Array.isArray(bank)||!bank.length)return;
