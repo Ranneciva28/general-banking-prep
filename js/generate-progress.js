@@ -3,9 +3,10 @@
   let overlay=null,fill=null,percentEl=null,stageEl=null,titleEl=null,timer=null,current=0;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
-  function ensureOverlay(){
-    if(overlay)return overlay;
+  function ensureUiStyles(){
+    if(document.getElementById('gbpGenerateUiStyles'))return;
     const style=document.createElement('style');
+    style.id='gbpGenerateUiStyles';
     style.textContent=`
       #gbpGenerateProgress{position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.64);backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;padding:20px;font-family:inherit}
       #gbpGenerateProgress.show{display:flex}
@@ -22,10 +23,24 @@
       #gbpGenerateProgress.done .gp-icon{background:#ecfdf3;color:#059669}
       #gbpGenerateProgress.done .gp-value{color:#059669}
       #gbpGenerateProgress.done .gp-fill{background:linear-gradient(90deg,#10b981,#34d399)}
+      @media(min-width:721px){
+        #quizView .quiz-bottom-nav{position:sticky!important;top:76px!important;z-index:46!important;display:flex!important;justify-content:flex-end!important;gap:10px!important;margin:10px 0 14px!important;padding:9px 10px!important;background:color-mix(in srgb,var(--surface) 96%,transparent)!important;border:1px solid var(--line)!important;border-radius:14px!important;box-shadow:0 8px 24px rgba(20,35,75,.09)!important;backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important}
+        #quizView .quiz-bottom-nav .btn{min-width:126px!important}
+      }
       @media(max-width:640px){#gbpGenerateProgress .gp-card{padding:20px;border-radius:18px}#gbpGenerateProgress .gp-copy h3{font-size:16px}}
     `;
     document.head.appendChild(style);
+  }
 
+  function placeQuizNavAboveQuestion(){
+    const view=document.getElementById('quizView'),nav=view?.querySelector('.quiz-bottom-nav'),layout=view?.querySelector('.quiz-layout');
+    if(!view||!nav||!layout)return;
+    if(nav.nextElementSibling!==layout)view.insertBefore(nav,layout);
+  }
+
+  function ensureOverlay(){
+    ensureUiStyles();
+    if(overlay)return overlay;
     overlay=document.createElement('div');
     overlay.id='gbpGenerateProgress';
     overlay.setAttribute('role','status');
@@ -95,7 +110,7 @@
     overlay.classList.add('done');
     overlay.setAttribute('aria-busy','false');
     titleEl.textContent='25 new questions are ready';
-    setProgress(100,'Done. Opening the refreshed module…');
+    setProgress(100,'Done. Opening this module with the new questions…');
     await sleep(420);
   }
 
@@ -138,12 +153,20 @@
     try{
       const active=await api.reserveNew(mid);
       clearModuleProgress(mid);
-      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length,meta:{databaseBank:true,engine:'v25-distinct-root',replaceAll25:true,progressNotification:true}});}catch(e){}
+      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length,meta:{databaseBank:true,engine:'v25-distinct-root',replaceAll25:true,progressNotification:true,noHomeRedirect:true}});}catch(e){}
       await minimum;
       await finishProgress();
-      sessionStorage.setItem('gbpAutoOpenModule',String(mid));
-      sessionStorage.setItem('gbpGenerationToast','25 soal lama sudah diganti penuh dengan 25 soal baru yang berbeda.');
-      location.reload();
+      if(window.GBPApp?.startModule){
+        window.GBPApp.startModule(mid);
+        await sleep(180);
+        placeQuizNavAboveQuestion();
+        hideProgress();
+        toast('25 soal baru sudah aktif di module ini.');
+      }else{
+        hideProgress();
+        if(button){button.disabled=false;button.textContent=oldText;}
+        toast('25 soal baru sudah aktif. Buka ulang module ini untuk memulai.');
+      }
     }catch(err){
       console.error(err);
       await sleep(300);
@@ -164,6 +187,12 @@
     if(!confirm('Ganti seluruh 25 soal aktif dengan 25 soal baru yang berbeda?'))return;
     runGenerate(mid,button);
   },true);
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    ensureUiStyles();
+    placeQuizNavAboveQuestion();
+    new MutationObserver(placeQuizNavAboveQuestion).observe(document.getElementById('quizView')||document.body,{childList:true,subtree:true});
+  },{once:true});
 
   window.GBPGenerateProgress={show:showProgress,set:setProgress,finish:finishProgress,hide:hideProgress};
 })();
