@@ -3,41 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
   <meta name="theme-color" content="#2454e6" />
   <meta name="description" content="General Banking Prep — quiz trainer 5-Day untuk persiapan General Banking Program." />
   <title>General Banking Prep</title>
   <script>
     (()=>{
-      const BUILD='2026.08.22.1036';
-      const KEY='gbpForcedCacheBuild';
-      const clearRuntime=async()=>{
-        try{if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()));}}catch(e){}
-        try{if('caches' in window){const names=await caches.keys();await Promise.all(names.map(n=>caches.delete(n)));}}catch(e){}
-        try{localStorage.removeItem('generalBankingGeneratedV5');localStorage.removeItem('generalBankingQuestionBankV5');}catch(e){}
-      };
+      const BUILD = '2026.08.22.2325-lite';
       window.__GBP_BUILD__=BUILD;
-      (async()=>{
-        try{
-          const res=await fetch(`version.json?t=${Date.now()}`,{cache:'no-store'});
-          const remote=await res.json();
-          const live=remote?.build||BUILD;
-          if(localStorage.getItem(KEY)!==live){
-            await clearRuntime();
-            localStorage.setItem(KEY,live);
-            const u=new URL(location.href);
-            if(u.searchParams.get('_build')!==live){u.searchParams.set('_build',live);location.replace(u.toString());}
-          }
-        }catch(e){
-          if(localStorage.getItem(KEY)!==BUILD){clearRuntime();localStorage.setItem(KEY,BUILD);}
-        }
-      })();
+      try{
+        const u=new URL(location.href);
+        let changed=false;
+        ['_build','_cache','_ts','_manualclear'].forEach(k=>{if(u.searchParams.has(k)){u.searchParams.delete(k);changed=true;}});
+        if(changed)history.replaceState(history.state,'',`${u.pathname}${u.search}${u.hash}`);
+      }catch(e){}
     })();
   </script>
-  <link rel="stylesheet" href="css/style.css?v=2026.08.22.1036" />
-  <link rel="stylesheet" href="css/v5.css?v=2026.08.22.1036" />
+  <link rel="stylesheet" href="css/style.css?v=2026.08.22.2325-lite" />
+  <link rel="stylesheet" href="css/v5.css?v=2026.08.22.2325-lite" />
 </head>
 <body>
   <div class="app-layout">
@@ -262,24 +244,24 @@
 
   <div id="toast" class="toast hidden"></div>
   <div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
-  <script src="js/cache-control.js?v=2026.08.22.1036"></script>
-  <script src="js/questions.js?v=2026.08.22.1036"></script>
-  <script src="js/material-bank-core.js?v=2026.08.22.1036"></script>
-  <script src="js/material-bank-d1.js?v=2026.08.22.1036"></script>
-  <script src="js/material-bank-d2.js?v=2026.08.22.1036"></script>
-  <script src="js/material-bank-d3.js?v=2026.08.22.1036"></script>
-  <script src="js/material-bank-d4d5.js?v=2026.08.22.1036"></script>
-  <script src="js/material-bank-extra.js?v=2026.08.22.1036"></script>
-  <script src="js/bridge-module.js?v=2026.08.22.1036"></script>
-  <script src="js/bridge-category.js?v=2026.08.22.1036"></script>
-  <script src="js/nupmk-modules.js?v=2026.08.22.1036"></script>
-  <script src="js/v5-patch.js?v=2026.08.22.1036"></script>
-  <script src="js/v23-quality-bank.js?v=2026.08.22.1036"></script>
-  <script src="js/generate-progress.js?v=2026.08.22.1036"></script>
-  <script src="js/v14-db-bank.js?v=2026.08.22.1036"></script>
-  <script src="js/v16-dedupe.js?v=2026.08.22.1036"></script>
-  <script src="js/app.js?v=2026.08.22.1036"></script>
-  <script src="js/v10-usage-watch.js?v=2026.08.22.1036"></script>
-  <script src="js/nupmk-ui.js?v=2026.08.22.1036"></script>
+  <script src="js/cache-control.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/questions.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/material-bank-core.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/material-bank-d1.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/material-bank-d2.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/material-bank-d3.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/material-bank-d4d5.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/material-bank-extra.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/bridge-module.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/bridge-category.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/nupmk-modules.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/v5-patch.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/v23-quality-bank.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/generate-progress.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/v14-db-bank.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/v16-dedupe.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/app.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/v10-usage-watch.js?v=2026.08.22.2325-lite"></script>
+  <script src="js/nupmk-ui.js?v=2026.08.22.2325-lite"></script>
 </body>
 </html>
