@@ -27,7 +27,7 @@
     overlay.id='gbpGenerateProgress';
     overlay.setAttribute('role','status');
     overlay.setAttribute('aria-live','polite');
-    overlay.innerHTML=`<div class="gp-card"><div class="gp-top"><div class="gp-icon">↻</div><div class="gp-copy"><h3>Menyiapkan 25 soal baru…</h3><p>Memilih set baru dan mengecek duplikasi.</p></div><div class="gp-value">0%</div></div><div class="gp-track"><div class="gp-fill"></div></div><div class="gp-stage">Memulai generator…</div></div>`;
+    overlay.innerHTML=`<div class="gp-card"><div class="gp-top"><div class="gp-icon">↻</div><div class="gp-copy"><h3>Menyiapkan 25 soal baru…</h3><p>Memilih set baru dan mengecek substansi.</p></div><div class="gp-value">0%</div></div><div class="gp-track"><div class="gp-fill"></div></div><div class="gp-stage">Memulai generator…</div></div>`;
     document.body.appendChild(overlay);
     fill=overlay.querySelector('.gp-fill');
     percentEl=overlay.querySelector('.gp-value');
@@ -90,13 +90,12 @@
     if(button){button.disabled=true;button.textContent='Generating…';}
     showProgress();
     try{
-      setProgress(42,'Mengecek duplikasi dan kualitas…');
-      await api.reserveNew(mid);
-      setProgress(66,'Mengecek perbedaan inti konsep…');
-      const active=window.GBPSemanticDedupe?.rebalanceModule?.(mid)||((window.QUESTION_BANK||[]).filter(q=>Number(q.moduleId)===Number(mid)));
+      setProgress(42,'Membandingkan struktur dan learning objective…');
+      const activeSlots=await api.reserveNew(mid);
+      const active=(window.QUESTION_BANK||[]).filter(q=>Number(q.moduleId)===Number(mid));
       clearModuleProgress(mid);
-      setProgress(82,'Memasang 25 soal dengan learning objective berbeda…');
-      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length,meta:{databaseBank:true,engine:'v25-distinct-root',replaceAll25:true,noReload:true,semanticDiversity:true}});}catch(e){}
+      setProgress(82,'Memasang 25 soal yang benar-benar berbeda…');
+      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length||activeSlots.length,meta:{databaseBank:true,engine:'v26-distinct-structure',replaceAll25:true,noReload:true,semanticDiversity:true,numberOnlyChangesBlocked:true}});}catch(e){}
       await sleep(120);
       const app=window.GBPApp;
       if(app?.startModule){
@@ -104,11 +103,11 @@
         await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
         overlay.classList.add('done');
         titleEl.textContent='25 soal baru siap';
-        setProgress(100,'Selesai. Substansi soal sudah diseimbangkan.');
+        setProgress(100,'Selesai. Angka saja tidak dihitung sebagai soal baru.');
         await sleep(180);
         hideProgress();
         window.scrollTo({top:0,behavior:'smooth'});
-        toast('25 soal baru aktif dengan inti konsep yang lebih beragam.');
+        toast('25 soal baru aktif dengan struktur dan substansi berbeda.');
       }else{
         sessionStorage.setItem('gbpAutoOpenModule',String(mid));
         sessionStorage.setItem('gbpGenerationToast','25 soal baru sudah aktif.');
@@ -118,7 +117,7 @@
       console.error(err);
       hideProgress();
       if(button){button.disabled=false;button.textContent=oldText;}
-      toast('Belum tersedia 25 soal baru yang benar-benar berbeda. Coba generate kembali.');
+      toast('Belum tersedia 25 soal baru yang benar-benar berbeda secara substansi.');
     }
   }
 
