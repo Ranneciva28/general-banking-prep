@@ -11,6 +11,8 @@
   const stop=new Set('yang dan atau untuk pada dalam dengan dari ke di ini itu tersebut sebuah suatu seorang adalah ialah merupakan sebagai agar serta paling lebih tepat sesuai analisis keputusan tindakan kesimpulan jawaban pilihan manakah apakah apa bagaimana mengapa berikut kondisi kasus situasi bank nasabah unit petugas proses dilakukan melakukan saat ketika jika maka perlu harus dapat akan mana berdasarkan terhadap terkait konteks'.split(' '));
   const promptTail=/(?:[.!?…]\s*)?(?:analisis|keputusan|tindakan|kesimpulan|jawaban|pilihan|fungsi|konsep|produk|risiko|transformasi|langkah|kontrol|prinsip|peran)\s+(?:apa|mana|yang)?\s*(?:paling\s+)?(?:tepat|sesuai|relevan|benar|utama|dominan|baik)?\s*(?:adalah)?\s*[.?…]*$/i;
   const genericAsk=/(?:[.!?…]\s*)?(?:manakah|apakah|apa|bagaimana|mengapa)\b[^.!?…]{0,95}[?…]*$/i;
+  const answerPoolByModule=new Map();
+  for(const q of SOURCE){const mid=Number(q.moduleId)||0;if(!mid)continue;const arr=answerPoolByModule.get(mid)||[];arr.push(clean(q.answer));answerPoolByModule.set(mid,arr);}
 
   function cleanOption(raw){
     return clean(raw)
@@ -22,6 +24,7 @@
 
   function tidy(raw){
     let s=clean(raw)
+      .replace(/^Dalam konteks modul ini,?\s*/i,'')
       .replace(/\bberdasarkan materi,?\s*/gi,'')
       .replace(/\bmenurut materi,?\s*/gi,'')
       .replace(/\s+dalam materi\b/gi,'')
@@ -79,6 +82,34 @@
     return wordClip(s,MAX_STEM);
   }
 
+  function optionTokens(s){return norm(s).split(' ').filter(Boolean)}
+  function optionScore(answer,candidate,isOriginal){
+    const a=optionTokens(answer),b=optionTokens(candidate);if(!a.length||!b.length)return -100;
+    let score=isOriginal?4:0;
+    if(a[0]===b[0])score+=12;
+    if(a.length>1&&b.length>1&&a[1]===b[1])score+=5;
+    const A=new Set(a),B=new Set(b);let common=0;for(const x of A)if(B.has(x))common++;
+    score+=common*3;
+    const numsA=(answer.match(/\d+/g)||[]),numsB=(candidate.match(/\d+/g)||[]);
+    if(numsA.length&&numsB.length)score+=5;
+    if(/^[A-Z]{2,}\b/.test(answer)&&/^[A-Z]{2,}\b/.test(candidate))score+=2;
+    score+=(Math.min(answer.length,candidate.length)/Math.max(answer.length,candidate.length))*2;
+    return score;
+  }
+  function sharpenOptions(base,mid){
+    const answer=cleanOption(base.answer);
+    const original=(base.options||[]).map(cleanOption).filter(x=>norm(x)!==norm(answer));
+    const extra=(answerPoolByModule.get(mid)||[]).map(cleanOption).filter(x=>norm(x)!==norm(answer));
+    const seen=new Set(),candidates=[];
+    for(const x of [...original,...extra]){const k=norm(x);if(!k||seen.has(k))continue;seen.add(k);candidates.push(x)}
+    const ranked=candidates.map((x,i)=>({x,s:optionScore(answer,x,original.some(o=>norm(o)===norm(x))),i})).sort((a,b)=>b.s-a.s||a.i-b.i).map(x=>x.x);
+    const distractors=ranked.slice(0,3);
+    if(distractors.length<3)return{options:[answer,...original].slice(0,4),answer};
+    const options=[answer,...distractors];
+    const rot=Math.abs((mid*13+rootId(base).length))%4;
+    return{options:[...options.slice(rot),...options.slice(0,rot)],answer};
+  }
+
   function coreText(q){let s=clean(q?.question||'').replace(promptTail,'').trim();const stripped=s.replace(genericAsk,'').trim();if(stripped.length>=45)s=stripped;return norm(s);}
   function sig(q){return coreText(q).split(' ').filter(t=>t.length>2&&!stop.has(t));}
   function jac(a,b){const A=new Set(a),B=new Set(b);if(!A.size||!B.size)return 0;let n=0;for(const x of A)if(B.has(x))n++;return n/(A.size+B.size-n);}
@@ -98,23 +129,22 @@
     if(!base||!Array.isArray(base.options)||base.options.length!==4||banned.test(clean(base.question)))continue;
     const root=rootId(base),mid=Number(base.moduleId)||0,rootKey=`${mid}|${root}`;
     if(!root||!mid||seenRoots.has(rootKey))continue;
-    const answerIndex=base.options.findIndex(x=>norm(x)===norm(base.answer));if(answerIndex<0)continue;
-    const options=base.options.map(cleanOption);if(new Set(options.map(norm)).size!==4)continue;
+    const sharpened=sharpenOptions(base,mid);if(!sharpened.options.includes(sharpened.answer)||new Set(sharpened.options.map(norm)).size!==4)continue;
     const question=compact(base.question),stem=norm(question),stemKey=`${mid}|${stem}`;
     if(!stem||banned.test(question)||seenStems.has(stemKey))continue;
     const candidate={
       ...base,
-      id:`V25-M${mid}-${root}`,
+      id:`V26-M${mid}-${root}`,
       question,
-      options,
-      answer:options[answerIndex],
+      options:sharpened.options,
+      answer:sharpened.answer,
       questionType:/\bKECUALI\b/i.test(question)?'Kecuali':(base.skill==='Analisis Kasus'?'Analisis Kasus':'Pilihan Ganda'),
       rootQuestionId:root,
       baseId:root,
-      variantMode:'concise-root',
+      variantMode:'concise-root-trap-options',
       conceptSignature:`m${mid}|root:${root}`,
       generated:!!base.generated,
-      qualityVersion:'V25-distinct-root'
+      qualityVersion:'V26-trap-options'
     };
     const peers=acceptedByModule.get(mid)||[];
     if(peers.some(x=>near(candidate,x)))continue;
@@ -124,6 +154,6 @@
 
   if(out.length){
     window.__GBP_SOURCE_BANK__=out;
-    window.__GBP_QUALITY_BANK_VERSION__='V25-distinct-root';
+    window.__GBP_QUALITY_BANK_VERSION__='V26-trap-options';
   }
 })();
