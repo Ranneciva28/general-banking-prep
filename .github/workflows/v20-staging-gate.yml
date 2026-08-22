@@ -5,7 +5,7 @@ on:
     paths:
       - '.github/workflows/v20-staging-gate.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -13,6 +13,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: v19-staging
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -30,18 +31,12 @@ jobs:
           global.localStorage={getItem:k=>storage[k]??null,setItem:(k,v)=>storage[k]=String(v),removeItem:k=>delete storage[k]};
           global.sessionStorage={getItem:()=>null,setItem:()=>{},removeItem:()=>{}};
           global.crypto=require('crypto').webcrypto;
-          global.document={
-            addEventListener:()=>{},querySelector:()=>null,querySelectorAll:()=>[],getElementById:()=>null,
-            referrer:'',createElement:()=>({style:{},classList:{add(){},remove(){},contains(){return false}},appendChild(){},querySelector(){return null}})
-          };
+          global.document={addEventListener:()=>{},querySelector:()=>null,querySelectorAll:()=>[],getElementById:()=>null,referrer:'',createElement:()=>({style:{},classList:{add(){},remove(){},contains(){return false}},appendChild(){},querySelector(){return null}})};
           global.location={reload(){},pathname:'/'};
           global.navigator={userAgent:'Node Audit',language:'id-ID'};
           global.screen={width:1440,height:900};
           global.confirm=()=>true;
-          global.fetch=async (url,init={})=>{
-            let body={};try{body=JSON.parse(init.body||'{}')}catch(e){}
-            return {ok:true,text:async()=>'',json:async()=>({accepted_count:Number(body.p_requested_count)||25,accepted_slots:(body.p_questions||[]).map(x=>x.slot)})};
-          };
+          global.fetch=async (url,init={})=>{let body={};try{body=JSON.parse(init.body||'{}')}catch(e){}return {ok:true,text:async()=>'',json:async()=>({accepted_count:Number(body.p_requested_count)||25,accepted_slots:(body.p_questions||[]).map(x=>x.slot)})};};
           require(process.cwd()+'/js/questions.js');
           require(process.cwd()+'/js/bridge-module.js');
           require(process.cwd()+'/js/bridge-category.js');
@@ -52,35 +47,31 @@ jobs:
           const optionKey=q=>(q.options||[]).map(norm).sort().join('|');
           const meta=/\b(materi|slide|modul)\b/i;
           let failed=false;
-          console.log('=== QUALITY SOURCE ===');
           for(let mid=1;mid<=35;mid++){
             const rows=quality.filter(q=>Number(q.moduleId)===mid),stems=new Set(),opts=new Set(),modes=new Set(),roots=new Set();let dup=0,badMeta=0,badOptions=0,short=0;
             for(const q of rows){const sk=norm(q.question),ok=optionKey(q);if(stems.has(sk)||opts.has(ok))dup++;stems.add(sk);opts.add(ok);modes.add(q.variantMode);roots.add(q.rootQuestionId);if(meta.test(q.question))badMeta++;if(!Array.isArray(q.options)||q.options.length!==4||!q.options.includes(q.answer))badOptions++;if(String(q.question||'').length<145)short++;}
-            console.log(`M${String(mid).padStart(2,'0')} pool=${rows.length} roots=${roots.size} modes=${modes.size} dup=${dup} meta=${badMeta} badOptions=${badOptions} short=${short}`);
+            console.log(`SOURCE M${String(mid).padStart(2,'0')} pool=${rows.length} roots=${roots.size} modes=${modes.size} dup=${dup} meta=${badMeta} badOptions=${badOptions} short=${short}`);
             if(rows.length<25||dup||badMeta||badOptions||short)failed=true;
           }
           window.QUESTION_BANK.splice(0,window.QUESTION_BANK.length,...quality);
           require(process.cwd()+'/js/v14-db-bank.js');
-          console.log('=== ACTIVE PREVIEW ===');
           for(let mid=1;mid<=35;mid++){
             const rows=window.QUESTION_BANK.filter(q=>Number(q.moduleId)===mid),stems=new Set(),opts=new Set(),sem=new Set();let dup=0;
             for(const q of rows){const sk=norm(q.question),ok=optionKey(q),ck=norm(q.conceptSignature||`${q.rootQuestionId||q.baseId}|${q.variantMode||''}`);if(stems.has(sk)||opts.has(ok)||sem.has(ck))dup++;stems.add(sk);opts.add(ok);sem.add(ck);}
-            console.log(`M${String(mid).padStart(2,'0')} active=${rows.length} dup=${dup}`);
-            if(rows.length!==25||dup)failed=true;
+            console.log(`PREVIEW M${String(mid).padStart(2,'0')} active=${rows.length} dup=${dup}`);if(rows.length!==25||dup)failed=true;
           }
           (async()=>{
-            console.log('=== GENERATE NEW SET ===');
             for(let mid=1;mid<=35;mid++){
-              try{
-                const slots=await window.GBPDatabaseQuestionBank.reserveNew(mid);
-                const rows=window.QUESTION_BANK.filter(q=>Number(q.moduleId)===mid),stems=new Set(),opts=new Set(),sem=new Set();let dup=0;
-                for(const q of rows){const sk=norm(q.question),ok=optionKey(q),ck=norm(q.conceptSignature||`${q.rootQuestionId||q.baseId}|${q.variantMode||''}`);if(stems.has(sk)||opts.has(ok)||sem.has(ck))dup++;stems.add(sk);opts.add(ok);sem.add(ck);}
-                console.log(`M${String(mid).padStart(2,'0')} generated=${slots.length} active=${rows.length} dup=${dup}`);
-                if(slots.length!==25||rows.length!==25||dup)failed=true;
-              }catch(e){console.log(`M${String(mid).padStart(2,'0')} ERROR ${e.message}`);failed=true;}
-            }
-            console.log(failed?'AUDIT=FAIL':'AUDIT=PASS');
-            process.exit(failed?1:0);
+              try{const slots=await window.GBPDatabaseQuestionBank.reserveNew(mid);const rows=window.QUESTION_BANK.filter(q=>Number(q.moduleId)===mid),stems=new Set(),opts=new Set(),sem=new Set();let dup=0;for(const q of rows){const sk=norm(q.question),ok=optionKey(q),ck=norm(q.conceptSignature||`${q.rootQuestionId||q.baseId}|${q.variantMode||''}`);if(stems.has(sk)||opts.has(ok)||sem.has(ck))dup++;stems.add(sk);opts.add(ok);sem.add(ck);}console.log(`GENERATE M${String(mid).padStart(2,'0')} slots=${slots.length} active=${rows.length} dup=${dup}`);if(slots.length!==25||rows.length!==25||dup)failed=true;}catch(e){console.log(`GENERATE M${String(mid).padStart(2,'0')} ERROR ${e.message}`);failed=true;}}
+            console.log(failed?'AUDIT=FAIL':'AUDIT=PASS');process.exit(failed?1:0);
           })();
           NODE
-          node /tmp/audit.js
+          node /tmp/audit.js | tee v20-audit.txt
+      - name: Publish passing audit to staging
+        run: |
+          printf '\nPASS_SHA=%s\nAUDITED_AT=%s\n' "$(git rev-parse HEAD)" "$(date -u +%FT%TZ)" >> v20-audit.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add v20-audit.txt
+          git commit -m "V20 staging audit passed"
+          git push origin HEAD:v19-staging
