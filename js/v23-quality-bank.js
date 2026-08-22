@@ -2,7 +2,6 @@
   const SOURCE=[...(window.__GBP_SOURCE_BANK__||window.QUESTION_BANK||[])];
   if(!SOURCE.length)return;
 
-  const MAX_STEM=205;
   const clean=s=>String(s??'').replace(/\s+/g,' ').trim();
   const norm=s=>clean(s).toLocaleLowerCase('id-ID').replace(/[^a-z0-9à-öø-ÿ]+/giu,' ').replace(/\s+/g,' ').trim();
   const cap=s=>String(s??'').replace(/^(\s*[^A-Za-zÀ-ÖØ-öø-ÿ]*)([a-zà-öø-ÿ])/u,(_,a,b)=>a+b.toLocaleUpperCase('id-ID'));
@@ -59,21 +58,10 @@
     return cap(clean(s).replace(/\s*\.\.\.\?$/,'?').replace(/\s+([,.!?;:])/g,'$1'));
   }
 
-  function promptStart(s){
-    const m=s.match(/\b(?:Apa|Mengapa|Bagaimana|Manakah|Fungsi|Transformasi|Prinsip|Produk|Risiko|Tindakan|Keputusan|Kombinasi|Peran|Klasifikasi|Posisi|Kesimpulan|Rencana)\b[^.!?]{0,125}(?:\?|\.{2,})$/i);
-    return m?m.index:-1;
-  }
-  function wordClip(s,n){s=clean(s);if(s.length<=n)return s;const x=s.slice(0,n).replace(/\s+\S*$/,'').replace(/[,:;.-]+$/,'').trim();return `${x}…`;}
+  // Integrity rule: quality cleanup may rewrite boilerplate, but it must never
+  // truncate a question by character count. The full cleaned stem is retained.
   function compact(raw){
-    let s=tidy(raw);if(s.length<=MAX_STEM)return s;
-    const sentences=s.split(/(?<=[.!?])\s+/).filter(Boolean);
-    if(sentences.length>1){
-      const prompt=sentences.pop();let context=clean(sentences.join(' '));
-      if(context.length>120){const clauses=context.split(/[,;]\s+/).filter(Boolean);if(clauses.length>=3)context=clean(`${clauses[0]}, ${clauses.slice(-1)[0]}`);if(context.length>120)context=wordClip(context,120);}
-      const candidate=clean(`${context} ${prompt}`);if(candidate.length<=MAX_STEM)return candidate;s=candidate;
-    }
-    const p=promptStart(s);if(p>35){const prompt=s.slice(p),budget=Math.max(70,MAX_STEM-prompt.length-1);return clean(`${wordClip(s.slice(0,p),budget)} ${prompt}`);}
-    return wordClip(s,MAX_STEM);
+    return tidy(raw);
   }
 
   const seenRoots=new Set(),seenStems=new Set(),out=[];
@@ -96,15 +84,15 @@
       questionType:/\bKECUALI\b/i.test(question)?'Kecuali':(base.skill==='Analisis Kasus'?'Analisis Kasus':'Pilihan Ganda'),
       rootQuestionId:root,
       baseId:root,
-      variantMode:'concise-root',
+      variantMode:'full-root',
       conceptSignature:`m${mid}|root:${root}`,
       generated:!!base.generated,
-      qualityVersion:'V25-distinct-root'
+      qualityVersion:'V25-full-stem'
     });
   }
 
   if(out.length){
     window.__GBP_SOURCE_BANK__=out;
-    window.__GBP_QUALITY_BANK_VERSION__='V25-distinct-root';
+    window.__GBP_QUALITY_BANK_VERSION__='V25-full-stem';
   }
 })();
