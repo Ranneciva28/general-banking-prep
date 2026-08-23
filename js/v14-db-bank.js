@@ -12,13 +12,26 @@
   const clean=s=>String(s??'').replace(/\s+/g,' ').trim();
   const norm=s=>clean(s).toLocaleLowerCase('id-ID').replace(/[^a-z0-9à-öø-ÿ]+/giu,' ').replace(/\s+/g,' ').trim();
   const hash=str=>{let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
-  const textKey=q=>norm(q?.question);
+
+  // Cold-start optimization: index the source bank once. The previous selector
+  // repeatedly filtered the entire source bank for every candidate/slot.
+  const POOLS=new Map();
+  for(const q of SOURCE){
+    const mid=Number(q?.moduleId)||0;if(!mid)continue;
+    let arr=POOLS.get(mid);if(!arr){arr=[];POOLS.set(mid,arr);}
+    if(arr.length<5000)arr.push(q);
+  }
+  const moduleIds=[...POOLS.keys()].sort((a,b)=>a-b);
+  const pool=mid=>POOLS.get(Number(mid))||[];
+
+  // Expensive string normalization/fingerprint operations are repeated heavily
+  // during similarity checks. Cache by immutable source strings.
+  const TEXT_CACHE=new Map(),STRUCT_CACHE=new Map(),CORE_CACHE=new Map(),TOKEN_CACHE=new Map(),BIGRAM_CACHE=new Map();
+  const textKey=q=>{const raw=String(q?.question||'');if(TEXT_CACHE.has(raw))return TEXT_CACHE.get(raw);const v=norm(raw);TEXT_CACHE.set(raw,v);return v;};
   const semanticKey=q=>norm(q?.conceptSignature||`${q?.moduleId||''}|${q?.rootQuestionId||q?.baseId||q?.id||''}`);
   const rootKey=q=>String(q?.rootQuestionId||q?.baseId||q?.id||'');
   const rank=q=>({Sedang:1,'Sedang-Sulit':2,Sulit:3,Challenge:4,Expert:5}[q?.difficulty]||3);
   const order=a=>[...a].sort((x,y)=>rank(y)-rank(x)||String(x.id).localeCompare(String(y.id)));
-  const pool=mid=>SOURCE.filter(q=>Number(q.moduleId)===Number(mid)).slice(0,5000);
-  const moduleIds=[...new Set(SOURCE.map(q=>Number(q.moduleId)))].filter(Boolean).sort((a,b)=>a-b);
   const clientId=(()=>{let x=localStorage.getItem(SESSION_KEY);if(!x){x=`${Date.now().toString(36)}-${crypto.getRandomValues(new Uint32Array(2)).join('-')}`;localStorage.setItem(SESSION_KEY,x)}return x})();
 
   const currency=/\b(?:USD|IDR|EUR|JPY|GBP|SGD|AUD|CNY|CNH|HKD|CHF|MYR|THB|VND|KRW)\b/gi;
@@ -35,20 +48,21 @@
       .replace(/\bT\s*\+\s*\d+\b/gi,' tvalue ')
       .replace(/\b\d+\s*(?:hari|bulan|tahun|jam|menit)\b/gi,' period ');
   }
-  const structureKey=q=>norm(neutralizeValues(q?.question||''));
+  const structureKey=q=>{const raw=String(q?.question||'');if(STRUCT_CACHE.has(raw))return STRUCT_CACHE.get(raw);const v=norm(neutralizeValues(raw));STRUCT_CACHE.set(raw,v);return v;};
 
   const stop=new Set('yang dan atau untuk pada dalam dengan dari ke di ini itu tersebut sebuah suatu seorang adalah ialah merupakan sebagai agar serta paling lebih tepat sesuai analisis keputusan tindakan kesimpulan jawaban pilihan manakah apakah apa bagaimana mengapa berikut kondisi kasus situasi bank nasabah unit petugas proses dilakukan melakukan saat ketika jika maka perlu harus dapat akan mana berdasarkan terhadap terkait konteks value currency month weekday tvalue period perusahaan'.split(' '));
   const promptTail=/(?:[.!?…]\s*)?(?:analisis|keputusan|tindakan|kesimpulan|jawaban|pilihan|fungsi|konsep|produk|risiko|transformasi|langkah|kontrol|prinsip|peran)\s+(?:apa|mana|yang)?\s*(?:paling\s+)?(?:tepat|sesuai|relevan|benar|utama|dominan|baik)?\s*(?:adalah)?\s*[.?…]*$/i;
   const genericAsk=/(?:[.!?…]\s*)?(?:manakah|apakah|apa|bagaimana|mengapa)\b[^.!?…]{0,95}[?…]*$/i;
   function coreStem(q){
-    let s=clean(neutralizeValues(q?.question||'')).replace(promptTail,'').trim();
+    const raw=String(q?.question||'');if(CORE_CACHE.has(raw))return CORE_CACHE.get(raw);
+    let s=clean(neutralizeValues(raw)).replace(promptTail,'').trim();
     const stripped=s.replace(genericAsk,'').trim();
     if(stripped.length>=45)s=stripped;
-    return norm(s);
+    const v=norm(s);CORE_CACHE.set(raw,v);return v;
   }
-  function sigTokens(q){return coreStem(q).split(' ').filter(t=>t.length>2&&!stop.has(t)&&!/^[0-9]+$/.test(t));}
+  function sigTokens(q){const raw=String(q?.question||'');if(TOKEN_CACHE.has(raw))return TOKEN_CACHE.get(raw);const v=coreStem(q).split(' ').filter(t=>t.length>2&&!stop.has(t)&&!/^[0-9]+$/.test(t));TOKEN_CACHE.set(raw,v);return v;}
   function jaccard(a,b){const A=new Set(a),B=new Set(b);if(!A.size||!B.size)return 0;let n=0;for(const x of A)if(B.has(x))n++;return n/(A.size+B.size-n);}
-  function bigrams(tokens){const out=[];for(let i=0;i<tokens.length-1;i++)out.push(`${tokens[i]} ${tokens[i+1]}`);return out;}
+  function bigrams(tokens){const key=tokens.join('\u0001');if(BIGRAM_CACHE.has(key))return BIGRAM_CACHE.get(key);const out=[];for(let i=0;i<tokens.length-1;i++)out.push(`${tokens[i]} ${tokens[i+1]}`);BIGRAM_CACHE.set(key,out);return out;}
   function prefixMatch(a,b,n=10){if(a.length<n||b.length<n)return false;let same=0;for(let i=0;i<n;i++)if(a[i]===b[i])same++;return same>=Math.ceil(n*.8);}
   function nearDuplicate(a,b,threshold=.76){
     if(!a||!b)return false;
@@ -158,7 +172,7 @@
     setBusy(button,true);
     try{
       const active=await reserveNew(mid);clearProgress(mid);
-      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,day:pool(mid)[0]?.day||null,questionCount:active.length,meta:{databaseBank:true,engine:'v26-distinct-structure',replaceAll25:true,zeroImmediateOverlap:true,numberOnlyChangesBlocked:true}});}catch(e){}
+      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,day:pool(mid)[0]?.day||null,questionCount:active.length,meta:{databaseBank:true,engine:'v26-indexed',replaceAll25:true,zeroImmediateOverlap:true,numberOnlyChangesBlocked:true}});}catch(e){}
       sessionStorage.setItem('gbpAutoOpenModule',String(mid));
       sessionStorage.setItem('gbpGenerationToast','25 soal lama diganti dengan 25 soal yang berbeda secara konsep dan struktur.');
       location.reload();
@@ -175,6 +189,6 @@
   },true);
 
   applyPreviews();
-  window.GBPDatabaseQuestionBank={engine:'v26-distinct-structure',bankSize:Math.max(...moduleIds.map(mid=>pool(mid).length),0),ensureModule,reserveNew,nearDuplicate,structureKey,clientId};
-  document.addEventListener('DOMContentLoaded',()=>{if(window.GBPQuestionBank){window.GBPQuestionBank.generate=mid=>generate(mid,document.querySelector('.quiz-generate-btn'));window.GBPQuestionBank.bankInfo=mid=>{const st=getState(mid);return{active:st.active.length||ACTIVE_LIMIT,database:true,engine:'v26-distinct-structure'};};}});
+  window.GBPDatabaseQuestionBank={engine:'v26-indexed',bankSize:Math.max(...moduleIds.map(mid=>pool(mid).length),0),ensureModule,reserveNew,nearDuplicate,structureKey,clientId};
+  document.addEventListener('DOMContentLoaded',()=>{if(window.GBPQuestionBank){window.GBPQuestionBank.generate=mid=>generate(mid,document.querySelector('.quiz-generate-btn'));window.GBPQuestionBank.bankInfo=mid=>{const st=getState(mid);return{active:st.active.length||ACTIVE_LIMIT,database:true,engine:'v26-indexed'};};}});
 })();
