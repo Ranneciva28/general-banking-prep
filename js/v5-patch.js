@@ -4,7 +4,8 @@
   const SESSION_KEY='gbpAnalyticsSessionV1';
   const clean=text=>String(text||'').replace(/\s+/g,' ').trim();
 
-  // Legacy compatibility/UI only. V28 owns the real 25-active / max-500 bank.
+  // V5 used to synthesize a 5,000-slot bank for every module at startup.
+  // V28 is now the source of truth, so V5 only keeps compatibility/UI helpers.
   const sessionId=(()=>{let x=localStorage.getItem(SESSION_KEY);if(!x){x=`${Date.now().toString(36)}-${crypto.getRandomValues(new Uint32Array(2)).join('-')}`;localStorage.setItem(SESSION_KEY,x)}return x})();
   let analyticsCtx={page:'dashboardView',moduleId:null,day:null};
 
@@ -36,8 +37,8 @@
 
   window.GBPQuestionBank=window.GBPQuestionBank||{
     generate:mid=>window.GBPDatabaseQuestionBank?.reserveNew?.(mid),
-    bankInfo:mid=>window.GBPDatabaseQuestionBank?.bankInfo?.(mid)||{active:25,bankSize:0,remaining:0,maxBank:500,database:true},
-    BANK_SIZE:500,ACTIVE_LIMIT:25
+    bankInfo:mid=>window.GBPDatabaseQuestionBank?.bankInfo?.(mid)||{active:25,database:true},
+    BANK_SIZE:0,ACTIVE_LIMIT:25
   };
 
   function cleanUI(){
@@ -55,29 +56,32 @@
   function injectQuestionType(){
     const quiz=document.querySelector('#quizView.active');if(!quiz)return;
     const q=currentQuestion(),status=quiz.querySelector('.quiz-status');if(!status)return;
-    let badge=status.querySelector('.question-type-status');
-    if(!q?.questionType){if(badge)badge.remove();return;}
+    let badge=status.querySelector('.question-type-status');if(!q?.questionType){if(badge)badge.remove();return;}
     if(!badge){badge=document.createElement('div');badge.className='question-type-status';const timer=status.querySelector('.status-metric');if(timer)status.insertBefore(badge,timer);else status.appendChild(badge);}
-    if(badge.dataset.type===q.questionType)return;
-    badge.dataset.type=q.questionType;badge.innerHTML=`<small>Jenis Soal</small><strong>${q.questionType}</strong>`;
+    if(badge.dataset.type===q.questionType)return;badge.dataset.type=q.questionType;badge.innerHTML=`<small>Jenis Soal</small><strong>${q.questionType}</strong>`;
   }
-  function injectQuizGenerator(){
+  function injectQuizGenerator(force=false){
     const quiz=document.getElementById('quizView');if(!quiz?.classList.contains('active'))return;
     const card=quiz.querySelector('.module-info-card'),mid=currentModuleId();if(!card||!mid)return;
     const info=window.GBPDatabaseQuestionBank?.bankInfo?.(mid)||window.GBPQuestionBank?.bankInfo?.(mid)||{active:25,bankSize:0,remaining:0,maxBank:500};
     const total=Math.min(Number(info.bankSize)||0,500),remaining=Math.max(0,Number(info.remaining)||0),canGenerate=remaining>=25;
     let box=card.querySelector('.quiz-generate-box');if(!box){box=document.createElement('div');box.className='quiz-generate-box';card.appendChild(box);}
-    const sig=`${mid}:${total}:${remaining}:${canGenerate}`;if(box.dataset.sig===sig)return;box.dataset.sig=sig;
+    const sig=`${mid}:${total}:${remaining}:${canGenerate}`;if(!force&&box.dataset.sig===sig)return;box.dataset.sig=sig;
     box.innerHTML=`<div class="quiz-generate-copy"><span>QUESTION BANK</span><strong>${canGenerate?'Generate 25 soal baru':'Bank soal unik tidak cukup'}</strong><small>${canGenerate?'Ambil 25 soal baru yang belum pernah muncul di module ini.':'Tersisa kurang dari 25 soal unik yang belum pernah muncul.'}</small></div><button type="button" class="quiz-generate-btn" ${canGenerate?'':'disabled'}>↻ Generate 25 Soal Baru</button><div class="quiz-bank-meta">${remaining.toLocaleString('id-ID')} belum muncul · ${total.toLocaleString('id-ID')} soal unik tersedia · maksimum 500/module</div>`;
   }
 
-  let scheduled=false;
-  function refreshSoon(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;cleanUI();injectQuestionType();injectQuizGenerator();});}
+  let scheduled=false,forceNext=false;
+  function refreshSoon(force=false){
+    forceNext=forceNext||force;if(scheduled)return;scheduled=true;
+    requestAnimationFrame(()=>{scheduled=false;const f=forceNext;forceNext=false;cleanUI();injectQuestionType();injectQuizGenerator(f);});
+  }
   document.addEventListener('DOMContentLoaded',()=>{
-    refreshSoon();
-    const tag=document.getElementById('moduleTag');if(tag)new MutationObserver(refreshSoon).observe(tag,{childList:true,characterData:true,subtree:true});
-    const q=document.getElementById('questionText');if(q)new MutationObserver(refreshSoon).observe(q,{childList:true,characterData:true,subtree:true});
-    const quiz=document.getElementById('quizView');if(quiz)new MutationObserver(refreshSoon).observe(quiz,{attributes:true,attributeFilter:['class']});
+    refreshSoon(true);
+    const tag=document.getElementById('moduleTag');if(tag)new MutationObserver(()=>refreshSoon()).observe(tag,{childList:true,characterData:true,subtree:true});
+    const q=document.getElementById('questionText');if(q)new MutationObserver(()=>refreshSoon()).observe(q,{childList:true,characterData:true,subtree:true});
+    const quiz=document.getElementById('quizView');if(quiz)new MutationObserver(()=>refreshSoon()).observe(quiz,{attributes:true,attributeFilter:['class']});
   });
-  document.addEventListener('click',()=>setTimeout(refreshSoon,0),{passive:true});
+  document.addEventListener('gbp:bank-updated',()=>refreshSoon(true));
+  document.addEventListener('click',()=>setTimeout(()=>refreshSoon(),0),{passive:true});
+  window.GBPRefreshBankUI=()=>refreshSoon(true);
 })();
