@@ -3,9 +3,42 @@
   const KEY='sb_publishable_ClLcjnxymypzS2O6x1TzwA_c9y7-j1Y';
   const SESSION_KEY='gbpAnalyticsSessionV1';
   const clientId=localStorage.getItem(SESSION_KEY);
-  if(!clientId)return;
   const clean=s=>String(s??'').replace(/\s+/g,' ').trim();
-  let lastId=null,busy=false;
+  let lastId=null,busy=false,autoNextTimer=null;
+
+  // Faster quiz flow: selecting an answer advances automatically. Practice mode
+  // keeps a brief visual beat so the correct/wrong state is still visible;
+  // Exam mode already advances itself in app.js, so this guard simply becomes
+  // a no-op if the question has already changed.
+  function scheduleAutoNext(){
+    clearTimeout(autoNextTimer);
+    const counter=document.getElementById('questionCounter')?.textContent||'';
+    const question=document.getElementById('questionText')?.textContent||'';
+    const exam=/exam/i.test(document.getElementById('quizModeTitle')?.textContent||'');
+    const delay=exam?180:650;
+    autoNextTimer=setTimeout(()=>{
+      const quiz=document.getElementById('quizView');
+      if(!quiz?.classList.contains('active'))return;
+      if((document.getElementById('questionCounter')?.textContent||'')!==counter)return;
+      if((document.getElementById('questionText')?.textContent||'')!==question)return;
+      const options=[...document.querySelectorAll('#optionsList .option-btn')];
+      // app.js disables all options only after the answer has been committed.
+      // This prevents an early/double advance and also protects manual navigation.
+      if(!options.length||options.some(b=>!b.disabled))return;
+      document.getElementById('nextBtn')?.click();
+    },delay);
+  }
+
+  document.addEventListener('click',e=>{
+    if(e.target.closest?.('.option-btn'))scheduleAutoNext();
+  },true);
+
+  // Cancel any pending auto-next when the user explicitly navigates elsewhere.
+  document.addEventListener('click',e=>{
+    if(e.target.closest?.('#nextBtn,#prevBtn,#skipBtn,[data-qnav],[data-view]'))clearTimeout(autoNextTimer);
+  },true);
+
+  if(!clientId)return;
 
   async function registerShown(){
     if(busy)return;
