@@ -2,6 +2,7 @@
   const SOURCE=[...(window.__GBP_SOURCE_BANK__||window.QUESTION_BANK||[])];
   if(!SOURCE.length)return;
 
+  const MAX_STEM=320;
   const clean=s=>String(s??'').replace(/\s+/g,' ').trim();
   const norm=s=>clean(s).toLocaleLowerCase('id-ID').replace(/[^a-z0-9à-öø-ÿ]+/giu,' ').replace(/\s+/g,' ').trim();
   const cap=s=>String(s??'').replace(/^(\s*[^A-Za-zÀ-ÖØ-öø-ÿ]*)([a-zà-öø-ÿ])/u,(_,a,b)=>a+b.toLocaleUpperCase('id-ID'));
@@ -52,6 +53,20 @@
       .replace(/\s+[—–-]\s+sesuai konteks\b.*$/i,'')));
   }
 
+  function naturalizeQuestion(raw){
+    return clean(raw)
+      .replace(/^Berdasarkan (?:informasi|data|kondisi|kasus|situasi) (?:di atas|tersebut),?\s*/i,'')
+      .replace(/^Dengan memperhatikan (?:informasi|data|kondisi|kasus|situasi) (?:di atas|tersebut),?\s*/i,'')
+      .replace(/^Dalam hal ini,?\s*/i,'')
+      .replace(/^Pada kondisi ini,?\s*/i,'')
+      .replace(/\buntuk dapat menjelaskan\b/gi,'untuk menjelaskan')
+      .replace(/\bperlu untuk dilakukan\b/gi,'perlu dilakukan')
+      .replace(/\bdapat digunakan untuk melakukan\b/gi,'dapat digunakan untuk')
+      .replace(/\byang paling memungkinkan\b/gi,'yang memungkinkan')
+      .replace(/\byang paling sesuai\b/gi,'yang sesuai')
+      .replace(/\byang paling benar\b/gi,'yang benar');
+  }
+
   function tidy(raw){
     let s=normalizeBoilerplate(raw)
       .replace(/\bSebuah bank\b/g,'Bank')
@@ -70,6 +85,7 @@
       .replace(/\byang paling relevan\b/gi,'yang relevan')
       .replace(/\byang paling dominan\b/gi,'yang dominan');
 
+    s=naturalizeQuestion(s);
     const rules=[
       [/Fungsi intermediasi yang (?:relevan|dominan)(?:\s+untuk[^.?!]+)?\s+adalah\.{2,}$/i,'Fungsi intermediasinya?'],
       [/Transformasi yang tepat adalah\.{2,}$/i,'Transformasinya?'],
@@ -77,18 +93,21 @@
       [/Prinsip ini (?:paling )?dekat dengan\.{2,}$/i,'Prinsipnya?'],
       [/Posisi bank yang tepat adalah\.{2,}$/i,'Peran banknya?'],
       [/kelompoknya adalah\.{2,}$/i,'Masuk kelompok apa?'],
-      [/Pernyataan yang tepat adalah\.{2,}$/i,'Kombinasi yang tepat?'],
+      [/Pernyataan yang tepat adalah\.{2,}$/i,'Pernyataan yang benar?'],
       [/Manakah kombinasi kegiatan yang (?:paling )?(?:konsisten|sesuai)[^?]*\?$/i,'Kombinasi kegiatan yang sesuai?'],
       [/Manakah rencana yang (?:paling )?jelas bertentangan dengan karakter kegiatan BPR[^?]*\?$/i,'Rencana mana yang dilarang bagi BPR?'],
-      [/Manakah tindakan yang (?:paling )?tepat[^?]*\?$/i,'Tindakan paling tepat?'],
-      [/Manakah keputusan yang (?:paling )?tepat[^?]*\?$/i,'Keputusan paling tepat?'],
-      [/Manakah produk yang (?:paling )?tepat[^?]*\?$/i,'Produk paling tepat?'],
-      [/Manakah risiko yang (?:paling )?(?:utama|relevan)[^?]*\?$/i,'Risiko utama?']
+      [/Manakah tindakan yang (?:paling )?tepat[^?]*\?$/i,'Tindakan yang tepat?'],
+      [/Manakah keputusan yang (?:paling )?tepat[^?]*\?$/i,'Keputusan yang tepat?'],
+      [/Manakah produk yang (?:paling )?tepat[^?]*\?$/i,'Produk yang tepat?'],
+      [/Manakah risiko yang (?:paling )?(?:utama|relevan)[^?]*\?$/i,'Risiko utamanya?']
     ];
     for(const [r,v] of rules)s=s.replace(r,v);
-    return normalizeEYD(clean(s).replace(/\s*\.\.\.\?$/,'?'));
+    s=clean(s).replace(/\s*\.\.\.\s*$/,'?').replace(/\s*…\s*$/,'?');
+    return normalizeEYD(s);
   }
 
+  // Never shorten by slicing characters. If a stem is too long, the selector
+  // should use another question instead of showing a chopped sentence.
   function compact(raw){return tidy(raw);}
 
   const seenRoots=new Set(),seenStems=new Set(),out=[];
@@ -101,13 +120,15 @@
     const options=base.options.map(cleanOption);if(new Set(options.map(norm)).size!==4)continue;
     const question=compact(base.question),stem=norm(question),stemKey=`${mid}|${stem}`;
     if(!stem||banned.test(question)||seenStems.has(stemKey))continue;
+    if(question.length>MAX_STEM)continue;
+    if(/…|\.{3,}/.test(question))continue;
     seenRoots.add(rootKey);seenStems.add(stemKey);
     const conceptSignature=String(base.conceptSignature||'').startsWith('material-concept:')?base.conceptSignature:`m${mid}|root:${root}`;
-    out.push({...base,id:`V25-M${mid}-${root}`,question,options,answer:options[answerIndex],questionType:/\bKECUALI\b/i.test(question)?'Kecuali':(base.skill==='Analisis Kasus'?'Analisis Kasus':'Pilihan Ganda'),rootQuestionId:root,baseId:root,variantMode:'full-root-eyd',conceptSignature,generated:!!base.generated,qualityVersion:'V25-full-stem-eyd-concept'});
+    out.push({...base,id:`V27-M${mid}-${root}`,question,options,answer:options[answerIndex],questionType:/\bKECUALI\b/i.test(question)?'Kecuali':(base.skill==='Analisis Kasus'?'Analisis Kasus':'Pilihan Ganda'),rootQuestionId:root,baseId:root,variantMode:'natural-full-stem',conceptSignature,generated:!!base.generated,qualityVersion:'V27-natural-concise'});
   }
 
   if(out.length){
     window.__GBP_SOURCE_BANK__=out;
-    window.__GBP_QUALITY_BANK_VERSION__='V25-full-stem-eyd-concept';
+    window.__GBP_QUALITY_BANK_VERSION__='V27-natural-concise';
   }
 })();
