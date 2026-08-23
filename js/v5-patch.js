@@ -4,8 +4,7 @@
   const SESSION_KEY='gbpAnalyticsSessionV1';
   const clean=text=>String(text||'').replace(/\s+/g,' ').trim();
 
-  // V5 used to synthesize a 5,000-slot bank for every module at startup.
-  // V26 is now the source of truth, so V5 only keeps compatibility/UI helpers.
+  // Legacy compatibility/UI only. V28 owns the real 25-active / max-500 bank.
   const sessionId=(()=>{let x=localStorage.getItem(SESSION_KEY);if(!x){x=`${Date.now().toString(36)}-${crypto.getRandomValues(new Uint32Array(2)).join('-')}`;localStorage.setItem(SESSION_KEY,x)}return x})();
   let analyticsCtx={page:'dashboardView',moduleId:null,day:null};
 
@@ -21,32 +20,24 @@
     const d=deviceInfo();
     try{
       await fetch(`${SUPA_URL}/rest/v1/rpc/gbp_track_event`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+        method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
         body:JSON.stringify({
           p_session_id:sessionId,p_event_type:type,p_page:extra.page??analyticsCtx.page,
           p_module_id:extra.moduleId??analyticsCtx.moduleId,p_day:extra.day??analyticsCtx.day,
           p_question_count:Math.min(50,Math.max(0,Number(extra.questionCount)||0)),
           p_device_type:d.device,p_browser:d.browser,p_os:d.os,p_language:navigator.language||null,
-          p_timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||null,
-          p_screen:`${screen.width}x${screen.height}`,p_latitude:null,p_longitude:null,
-          p_referrer:document.referrer||null,p_meta:extra.meta||{}
+          p_timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||null,p_screen:`${screen.width}x${screen.height}`,
+          p_latitude:null,p_longitude:null,p_referrer:document.referrer||null,p_meta:extra.meta||{}
         }),keepalive:true
       });
     }catch(e){}
   }
-  window.GBPAnalytics={
-    track,
-    setContext:(next={})=>{analyticsCtx={...analyticsCtx,...next};track('view_change',next)},
-    sessionId
-  };
+  window.GBPAnalytics={track,setContext:(next={})=>{analyticsCtx={...analyticsCtx,...next};track('view_change',next)},sessionId};
 
-  // Compatibility object. V26 replaces generate/bankInfo after initialization.
   window.GBPQuestionBank=window.GBPQuestionBank||{
     generate:mid=>window.GBPDatabaseQuestionBank?.reserveNew?.(mid),
-    bankInfo:mid=>window.GBPDatabaseQuestionBank?.bankInfo?.(mid)||{active:25,database:true},
-    BANK_SIZE:0,
-    ACTIVE_LIMIT:25
+    bankInfo:mid=>window.GBPDatabaseQuestionBank?.bankInfo?.(mid)||{active:25,bankSize:0,remaining:0,maxBank:500,database:true},
+    BANK_SIZE:500,ACTIVE_LIMIT:25
   };
 
   function cleanUI(){
@@ -55,48 +46,33 @@
     const profile=document.querySelector('.profile-chip');if(profile)profile.style.display='none';
     const footer=document.querySelector('.footer');if(footer&&footer.textContent!=='Data tersimpan lokal di perangkat ini')footer.textContent='Data tersimpan lokal di perangkat ini';
     const quick=document.querySelector('.quick-actions');
-    if(quick){
-      quick.querySelectorAll('.quick-card:not(#weaknessDrillBtn)').forEach(x=>x.style.display='none');
-      const title=quick.closest('.section-block')?.querySelector('.section-title-row');if(title)title.style.display='none';
-      quick.classList.add('weakness-only-grid');
-    }
+    if(quick){quick.querySelectorAll('.quick-card:not(#weaknessDrillBtn)').forEach(x=>x.style.display='none');const title=quick.closest('.section-block')?.querySelector('.section-title-row');if(title)title.style.display='none';quick.classList.add('weakness-only-grid');}
     document.querySelectorAll('.module-bank-box,.setup-bank-inline').forEach(x=>x.remove());
   }
 
-  function currentQuestion(){
-    const text=document.getElementById('questionText')?.textContent?.trim();if(!text)return null;
-    return (window.QUESTION_BANK||[]).find(x=>clean(x.question)===clean(text))||null;
-  }
-  function currentModuleId(){
-    const name=document.getElementById('moduleTag')?.textContent?.trim();if(!name)return null;
-    const q=(window.QUESTION_BANK||[]).find(x=>x.moduleName===name);return q?Number(q.moduleId):null;
-  }
+  function currentQuestion(){const text=document.getElementById('questionText')?.textContent?.trim();if(!text)return null;return (window.QUESTION_BANK||[]).find(x=>clean(x.question)===clean(text))||null;}
+  function currentModuleId(){const name=document.getElementById('moduleTag')?.textContent?.trim();if(!name)return null;const q=(window.QUESTION_BANK||[]).find(x=>x.moduleName===name);return q?Number(q.moduleId):null;}
   function injectQuestionType(){
     const quiz=document.querySelector('#quizView.active');if(!quiz)return;
     const q=currentQuestion(),status=quiz.querySelector('.quiz-status');if(!status)return;
     let badge=status.querySelector('.question-type-status');
     if(!q?.questionType){if(badge)badge.remove();return;}
-    if(!badge){
-      badge=document.createElement('div');badge.className='question-type-status';
-      const timer=status.querySelector('.status-metric');if(timer)status.insertBefore(badge,timer);else status.appendChild(badge);
-    }
+    if(!badge){badge=document.createElement('div');badge.className='question-type-status';const timer=status.querySelector('.status-metric');if(timer)status.insertBefore(badge,timer);else status.appendChild(badge);}
     if(badge.dataset.type===q.questionType)return;
     badge.dataset.type=q.questionType;badge.innerHTML=`<small>Jenis Soal</small><strong>${q.questionType}</strong>`;
   }
   function injectQuizGenerator(){
     const quiz=document.getElementById('quizView');if(!quiz?.classList.contains('active'))return;
     const card=quiz.querySelector('.module-info-card'),mid=currentModuleId();if(!card||!mid)return;
+    const info=window.GBPDatabaseQuestionBank?.bankInfo?.(mid)||window.GBPQuestionBank?.bankInfo?.(mid)||{active:25,bankSize:0,remaining:0,maxBank:500};
+    const total=Math.min(Number(info.bankSize)||0,500),remaining=Math.max(0,Number(info.remaining)||0),canGenerate=remaining>=25;
     let box=card.querySelector('.quiz-generate-box');if(!box){box=document.createElement('div');box.className='quiz-generate-box';card.appendChild(box);}
-    if(box.dataset.mid===String(mid))return;
-    box.dataset.mid=String(mid);
-    box.innerHTML=`<div class="quiz-generate-copy"><span>QUESTION BANK</span><strong>Butuh set soal baru?</strong><small>Ganti seluruh 25 soal aktif dengan set baru yang berbeda.</small></div><button type="button" class="quiz-generate-btn">↻ Generate New Questions</button><div class="quiz-bank-meta">25 soal aktif · V26 semantic & structure guard</div>`;
+    const sig=`${mid}:${total}:${remaining}:${canGenerate}`;if(box.dataset.sig===sig)return;box.dataset.sig=sig;
+    box.innerHTML=`<div class="quiz-generate-copy"><span>QUESTION BANK</span><strong>${canGenerate?'Generate 25 soal baru':'Bank soal unik tidak cukup'}</strong><small>${canGenerate?'Ambil 25 soal baru yang belum pernah muncul di module ini.':'Tersisa kurang dari 25 soal unik yang belum pernah muncul.'}</small></div><button type="button" class="quiz-generate-btn" ${canGenerate?'':'disabled'}>↻ Generate 25 Soal Baru</button><div class="quiz-bank-meta">${remaining.toLocaleString('id-ID')} belum muncul · ${total.toLocaleString('id-ID')} soal unik tersedia · maksimum 500/module</div>`;
   }
 
   let scheduled=false;
-  function refreshSoon(){
-    if(scheduled)return;scheduled=true;
-    requestAnimationFrame(()=>{scheduled=false;cleanUI();injectQuestionType();injectQuizGenerator();});
-  }
+  function refreshSoon(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;cleanUI();injectQuestionType();injectQuizGenerator();});}
   document.addEventListener('DOMContentLoaded',()=>{
     refreshSoon();
     const tag=document.getElementById('moduleTag');if(tag)new MutationObserver(refreshSoon).observe(tag,{childList:true,characterData:true,subtree:true});
