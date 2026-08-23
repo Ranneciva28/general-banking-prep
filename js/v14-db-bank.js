@@ -74,9 +74,7 @@
   }
   function validQuestion(q){return !!(q&&textKey(q)&&rootKey(q)&&Array.isArray(q.options)&&q.options.length===4&&new Set(q.options.map(norm)).size===4&&q.options.some(x=>clean(x)===clean(q.answer)));}
 
-  // Build an honest maximum-500 bank per module. Exact roots, number/name-only
-  // variants, and repeated learning-objective fingerprints are collapsed here.
-  // If a module has fewer genuinely different questions, its bank stays smaller.
+  // Honest maximum-500 bank: never manufacture paraphrases just to hit the cap.
   const POOLS=new Map();
   const rawByModule=new Map();
   for(const q of SOURCE){const mid=Number(q?.moduleId)||0;if(!mid||!validQuestion(q))continue;let arr=rawByModule.get(mid);if(!arr){arr=[];rawByModule.set(mid,arr);}arr.push(q);}
@@ -95,7 +93,7 @@
 
   let state={};try{state=JSON.parse(localStorage.getItem(STATE_KEY)||'{}')||{}}catch(e){state={}}
   let localSeen={};try{localSeen=JSON.parse(localStorage.getItem(LOCAL_SEEN_KEY)||'{}')||{}}catch(e){localSeen={}}
-  const getState=mid=>{const r=state[String(mid)]||{};return{active:Array.isArray(r.active)?r.active.map(Number):[],synced:!!r.synced,updatedAt:Number(r.updatedAt)||0}};
+  const getState=mid=>{const r=state[String(mid)]||{};return{active:Array.isArray(r.active)?r.active.map(Number):[],displayOrder:Array.isArray(r.displayOrder)?r.displayOrder.map(Number):[],synced:!!r.synced,updatedAt:Number(r.updatedAt)||0}};
   const saveState=(mid,v)=>{state[String(mid)]={...getState(mid),...v};localStorage.setItem(STATE_KEY,JSON.stringify(state))};
   const saveSeen=()=>{try{const rows=Object.entries(localSeen).sort((a,b)=>b[1]-a[1]).slice(0,50000);localSeen=Object.fromEntries(rows);localStorage.setItem(LOCAL_SEEN_KEY,JSON.stringify(localSeen))}catch(e){}};
   try{
@@ -135,17 +133,25 @@
   }
 
   function validateSlots(mid,slots){if(!Array.isArray(slots)||slots.length!==ACTIVE_LIMIT)return false;const chosen=[];for(const slot of slots){const q=question(mid,slot);if(!canAdd(q,chosen,[],.86))return false;chosen.push(q);}return true;}
+  function sameSlotSet(a,b){if(a.length!==b.length)return false;const A=[...a].sort((x,y)=>x-y),B=[...b].sort((x,y)=>x-y);return A.every((x,i)=>x===B[i]);}
+  function moduleDisplaySlots(mid,slots){const st=getState(mid);return st.displayOrder.length===slots.length&&sameSlotSet(st.displayOrder,slots)?st.displayOrder:slots;}
   function replaceModule(mid,slots){
     const target=window.QUESTION_BANK||[],others=target.filter(q=>Number(q.moduleId)!==Number(mid)),chosen=[],qs=[];
     for(const slot of slots){const q=question(mid,slot);if(!canAdd(q,chosen,[],.86))continue;chosen.push(q);qs.push(q);}
     if(qs.length!==ACTIVE_LIMIT)throw new Error(`invalid-active-set-${mid}-${qs.length}`);
-    target.splice(0,target.length,...others,...order(qs));
+    const bySlot=new Map(qs.map(q=>[Number(q.bankSlot),q]));
+    const display=moduleDisplaySlots(mid,slots).map(slot=>bySlot.get(Number(slot))).filter(Boolean);
+    target.splice(0,target.length,...others,...(display.length===ACTIVE_LIMIT?display:order(qs)));
   }
   function previewSlots(mid){const st=getState(mid);if(validateSlots(mid,st.active))return st.active;const slots=buildSet(mid,{respectHistory:false,seedOffset:mid*31});if(slots.length!==ACTIVE_LIMIT)console.error(`Module ${mid} has only ${slots.length}/${ACTIVE_LIMIT} sufficiently distinct active questions`,{bank:pool(mid).length});return slots;}
   function applyPreviews(){
     const target=window.QUESTION_BANK||[],original=[...target],next=[];
-    for(const mid of moduleIds){const slots=previewSlots(mid);if(slots.length===ACTIVE_LIMIT){for(const slot of slots){const q=question(mid,slot);if(q)next.push(q);}continue;}const fallback=original.filter(q=>Number(q.moduleId)===Number(mid)).slice(0,ACTIVE_LIMIT);if(fallback.length)next.push(...fallback);}
-    if(next.length)target.splice(0,target.length,...order(next));
+    for(const mid of moduleIds){
+      const slots=previewSlots(mid);
+      if(slots.length===ACTIVE_LIMIT){const bySlot=new Map(slots.map(slot=>[Number(slot),question(mid,slot)]));const display=moduleDisplaySlots(mid,slots);for(const slot of display){const q=bySlot.get(Number(slot));if(q)next.push(q);}continue;}
+      const fallback=original.filter(q=>Number(q.moduleId)===Number(mid)).slice(0,ACTIVE_LIMIT);if(fallback.length)next.push(...fallback);
+    }
+    if(next.length)target.splice(0,target.length,...next);
   }
 
   async function rpc(name,body){const r=await fetch(`${SUPA_URL}/rest/v1/rpc/${name}`,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify(body||{})});if(!r.ok)throw new Error(await r.text()||name);return r.json();}
@@ -158,26 +164,40 @@
     if(replaceCurrent&&remainingUnique(mid)<ACTIVE_LIMIT)throw new Error(`unique-bank-exhausted-${mid}-${remainingUnique(mid)}`);
     const active=buildSet(mid,{respectHistory:replaceCurrent,seedOffset:Math.floor(Math.random()*1e9),excludeSlots:replaceCurrent?previous:[],excludeQuestions:replaceCurrent?previousQuestions:[]});
     if(active.length<ACTIVE_LIMIT)throw new Error(`insufficient-distinct-bank-${mid}-${active.length}`);
-    markSeen(mid,active);saveState(mid,{active,synced:false,updatedAt:Date.now()});replaceModule(mid,active);return active;
+    markSeen(mid,active);saveState(mid,{active,displayOrder:[],synced:false,updatedAt:Date.now()});replaceModule(mid,active);return active;
   }
   async function reserveNew(mid){const active=pickLocalUnique(mid,{replaceCurrent:true});setTimeout(()=>syncActive(mid,active),0);return active;}
-  async function ensureModule(mid){const st=getState(mid);if(validateSlots(mid,st.active)){replaceModule(mid,st.active);if(!st.synced)setTimeout(()=>syncActive(mid,st.active),0);return st.active;}const active=buildSet(mid,{respectHistory:false,seedOffset:mid*97});if(active.length!==ACTIVE_LIMIT)throw new Error(`module-bank-too-small-${mid}-${active.length}`);markSeen(mid,active);saveState(mid,{active,synced:false,updatedAt:Date.now()});replaceModule(mid,active);setTimeout(()=>syncActive(mid,active),0);return active;}
+  async function ensureModule(mid){
+    const st=getState(mid);
+    if(validateSlots(mid,st.active)){replaceModule(mid,st.active);if(!st.synced)setTimeout(()=>syncActive(mid,st.active),0);return st.active;}
+    const active=buildSet(mid,{respectHistory:false,seedOffset:mid*97});if(active.length!==ACTIVE_LIMIT)throw new Error(`module-bank-too-small-${mid}-${active.length}`);
+    markSeen(mid,active);saveState(mid,{active,displayOrder:[],synced:false,updatedAt:Date.now()});replaceModule(mid,active);setTimeout(()=>syncActive(mid,active),0);return active;
+  }
+  function reshuffleActive(mid){
+    const st=getState(mid),active=st.active.filter(Boolean);
+    if(active.length!==ACTIVE_LIMIT||!validateSlots(mid,active))throw new Error(`cannot-reshuffle-${mid}`);
+    const current=moduleDisplaySlots(mid,active),next=[...current];
+    for(let i=next.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[next[i],next[j]]=[next[j],next[i]];}
+    if(next.every((x,i)=>x===current[i]))next.push(next.shift());
+    saveState(mid,{displayOrder:next,updatedAt:Date.now()});replaceModule(mid,active);
+    return next;
+  }
 
-  function bankInfo(mid){const total=pool(mid).length,remaining=remainingUnique(mid),st=getState(mid);return{active:st.active.length||ACTIVE_LIMIT,bankSize:total,remaining,maxBank:BANK_LIMIT,database:true,engine:'v28-honest-500'};}
+  function bankInfo(mid){const total=pool(mid).length,remaining=remainingUnique(mid),st=getState(mid);return{active:st.active.length||ACTIVE_LIMIT,bankSize:total,remaining,maxBank:BANK_LIMIT,canGenerateNew:remaining>=ACTIVE_LIMIT,canReshuffle:st.active.length===ACTIVE_LIMIT,database:true,engine:'v28-honest-500'};}
   function clearProgress(mid){try{const all=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'{}')||{};delete all[String(mid)];localStorage.setItem(PROGRESS_KEY,JSON.stringify(all));}catch(e){localStorage.removeItem(PROGRESS_KEY);}try{window.GBPApp?.clearModuleProgress?.(mid);}catch(e){}}
   const toast=msg=>{const el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add('hidden'),4000);};
   const setBusy=(btn,on)=>{if(!btn)return;btn.disabled=on;btn.dataset.oldText=btn.dataset.oldText||btn.textContent;btn.textContent=on?'Menyiapkan 25 soal baru…':btn.dataset.oldText;};
-  async function generate(mid,button){setBusy(button,true);try{const active=await reserveNew(mid);clearProgress(mid);try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,day:pool(mid)[0]?.day||null,questionCount:active.length,meta:{engine:'v28-honest-500',bankLimit:BANK_LIMIT,bankSize:pool(mid).length,remaining:remainingUnique(mid)}});}catch(e){}sessionStorage.setItem('gbpAutoOpenModule',String(mid));sessionStorage.setItem('gbpGenerationToast','25 soal baru sudah aktif.');location.reload();}catch(e){console.error(e);setBusy(button,false);toast(remainingUnique(mid)<ACTIVE_LIMIT?'Bank soal unik module ini sudah tidak memiliki 25 soal baru lagi.':'Belum tersedia 25 soal baru yang cukup berbeda secara substansi.');}}
+  async function generate(mid,button){setBusy(button,true);try{const active=await reserveNew(mid);clearProgress(mid);try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,day:pool(mid)[0]?.day||null,questionCount:active.length,meta:{engine:'v28-honest-500',bankLimit:BANK_LIMIT,bankSize:pool(mid).length,remaining:remainingUnique(mid)}});}catch(e){}sessionStorage.setItem('gbpAutoOpenModule',String(mid));sessionStorage.setItem('gbpGenerationToast','25 soal baru sudah aktif.');location.reload();}catch(e){console.error(e);setBusy(button,false);toast(remainingUnique(mid)<ACTIVE_LIMIT?'Tidak tersisa 25 soal unik baru. Gunakan mode acak ulang jika ingin mengulang module ini.':'Belum tersedia 25 soal baru yang cukup berbeda secara substansi.');}}
   function midFromStart(btn){return Number(btn?.dataset?.moduleStart||btn?.dataset?.specialStart||btn?.dataset?.nupmkStart||0)||null;}
   async function prepareSetup(button){const mids=[...document.querySelectorAll('.setup-module-card.selected')].map(x=>Number(x.dataset.module)).filter(Boolean);if(!mids.length)return false;setBusy(button,true);for(const mid of mids)await ensureModule(mid);setBusy(button,false);return true;}
 
   document.addEventListener('click',e=>{
-    const gen=e.target.closest?.('.quiz-generate-btn');if(gen){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();const name=document.getElementById('moduleTag')?.textContent?.trim(),q=(window.QUESTION_BANK||[]).find(x=>x.moduleName===name),mid=q?Number(q.moduleId):null;if(mid&&confirm('Generate 25 soal baru dari bank unik module ini?'))generate(mid,gen);return;}
+    const gen=e.target.closest?.('.quiz-generate-btn');if(gen){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();return;}
     const setup=e.target.closest?.('#startQuizBtn');if(setup&&setup.dataset.dbPrepared!=='1'){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();prepareSetup(setup).then(ok=>{if(!ok){setBusy(setup,false);return;}setup.dataset.dbPrepared='1';setup.click();setTimeout(()=>delete setup.dataset.dbPrepared,0);}).catch(err=>{console.error(err);setBusy(setup,false);setup.dataset.dbPrepared='1';setup.click();setTimeout(()=>delete setup.dataset.dbPrepared,0);});return;}
     const start=e.target.closest?.('[data-module-start],[data-special-start],[data-nupmk-start]');if(!start||start.dataset.dbPrepared==='1')return;const mid=midFromStart(start);if(!mid)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();setBusy(start,true);ensureModule(mid).then(()=>{setBusy(start,false);start.dataset.dbPrepared='1';start.click();setTimeout(()=>delete start.dataset.dbPrepared,0);}).catch(err=>{console.error(err);setBusy(start,false);toast('Module ini belum memiliki 25 soal yang lolos quality gate.');});
   },true);
 
   applyPreviews();
-  window.GBPDatabaseQuestionBank={engine:'v28-honest-500',bankLimit:BANK_LIMIT,bankSize:Math.max(...moduleIds.map(mid=>pool(mid).length),0),ensureModule,reserveNew,nearDuplicate,structureKey,bankInfo,clientId};
+  window.GBPDatabaseQuestionBank={engine:'v28-honest-500',bankLimit:BANK_LIMIT,bankSize:Math.max(...moduleIds.map(mid=>pool(mid).length),0),ensureModule,reserveNew,reshuffleActive,nearDuplicate,structureKey,bankInfo,clientId};
   document.addEventListener('DOMContentLoaded',()=>{if(window.GBPQuestionBank){window.GBPQuestionBank.generate=mid=>generate(mid,document.querySelector('.quiz-generate-btn'));window.GBPQuestionBank.bankInfo=bankInfo;window.GBPQuestionBank.BANK_SIZE=BANK_LIMIT;window.GBPQuestionBank.ACTIVE_LIMIT=ACTIVE_LIMIT;}});
 })();
