@@ -19,64 +19,97 @@
   function stripTail(s){return clean(s).replace(/[.?!:;…]+$/,'');}
   function lowerFirst(s){
     s=clean(s);if(!s)return s;
-    if(/^(USD|IDR|EUR|JPY|GBP|SGD|AUD|CNY|FX|KBMI|KPR|KKB|KTA|L\/C|LC|SKBDN|SWIFT|MT\d+|CKPN|RTO|RPO|BIA|BCP|DRP|DRC|CDD|EDD|PEP|OTP|PIN|QRIS)\b/.test(s))return s;
+    if(/^(USD|IDR|EUR|JPY|GBP|SGD|AUD|CNY|FX|KBMI|KPR|KKB|KTA|L\/C|LC|SKBDN|SWIFT|MT\d+|CKPN|RTO|RPO|BIA|BCP|DRP|DRC|CDD|EDD|PEP|OTP|PIN|QRIS|AML|KYC|CIF|RTGS|BI-RTGS)\b/.test(s))return s;
     return s.charAt(0).toLocaleLowerCase('id-ID')+s.slice(1);
   }
-  function upperFirst(s){
-    s=clean(s);if(!s)return s;
-    return s.charAt(0).toLocaleUpperCase('id-ID')+s.slice(1);
-  }
-  function statement(raw){
-    const s=stripTail(raw);
-    return s?`${upperFirst(s)}.`:'';
-  }
+  function upperFirst(s){s=clean(s);return s?s.charAt(0).toLocaleUpperCase('id-ID')+s.slice(1):s;}
+  function statement(raw){const s=stripTail(raw);return s?`${upperFirst(s)}.`:'';}
 
-  function serviceInformationQuestion(term,clue,index){
-    const raw=stripTail(clue),lead=statement(raw),seed=hash(`${term}|${index}`)%5;
-    const tails=[
-      'Aspek pelayanan informasi yang dimaksud adalah?',
-      'Aspek layanan apa yang paling sesuai?',
-      'Hal ini paling tepat menggambarkan aspek pelayanan apa?',
-      'Dalam pelayanan informasi produk, aspek yang diuji adalah?',
-      'Praktik tersebut berkaitan dengan aspek layanan apa?'
-    ];
-    if(seed===3)return`Dalam pelayanan informasi produk, ${lowerFirst(raw)}. Aspek yang diuji adalah?`;
-    return`${lead} ${tails[seed]}`;
+  const genericTails=[
+    {family:'identify',text:'Konsep yang paling sesuai adalah?'},
+    {family:'practice',text:'Hal ini merupakan penerapan apa?'},
+    {family:'aspect',text:'Aspek yang sedang diterapkan adalah?'},
+    {family:'recognize',text:'Situasi tersebut paling tepat menggambarkan apa?'},
+    {family:'term',text:'Istilah yang sesuai untuk kondisi tersebut adalah?'},
+    {family:'principle',text:'Prinsip yang terlihat dari situasi tersebut adalah?'},
+    {family:'classification',text:'Hal tersebut termasuk dalam kategori apa?'},
+    {family:'purpose',text:'Konsep apa yang paling menjelaskan praktik tersebut?'}
+  ];
+
+  function clueKind(raw){
+    const s=norm(raw);
+    if(/^(dokumen|formulir|surat|laporan|instrumen|warkat|rekening|produk|layanan|jasa)\b/.test(s))return'noun';
+    if(/^(petugas|bank|nasabah|debitur|perusahaan|unit|penyelenggara|peserta|eksportir|importir|kontraktor)\b/.test(s))return'scenario';
+    if(/\b(?:wajib|harus|tidak boleh|perlu|memastikan|memeriksa|memverifikasi|mencatat|menyimpan|menjaga)\b/.test(s))return'control';
+    if(/\b(?:digunakan untuk|berfungsi untuk|bertujuan|agar|untuk membantu|untuk memastikan)\b/.test(s))return'purpose';
+    if(/\b(?:sebelum|setelah|kemudian|tahap|langkah|proses)\b/.test(s))return'process';
+    return'concept';
   }
 
   function naturalQuestion(term,clue,mid,index){
-    const t=norm(term),raw=stripTail(clue);
-    if(t==='kbmi 1')return'Modal inti sebuah bank tepat Rp6 triliun. Bank tersebut masuk KBMI berapa?';
-    if(t==='kbmi 2')return'Modal inti sebuah bank tepat Rp14 triliun. Bank tersebut masuk KBMI berapa?';
-    if(t==='kbmi 3')return'Modal inti sebuah bank tepat Rp70 triliun. Bank tersebut masuk KBMI berapa?';
-    if(t==='kbmi 4')return'Modal inti sebuah bank Rp70,1 triliun. Bank tersebut masuk KBMI berapa?';
+    const t=norm(term),raw=stripTail(clue),lead=statement(raw),kind=clueKind(raw),seed=hash(`${mid}|${term}|${index}`);
+    if(t==='kbmi 1')return{question:'Modal inti sebuah bank tepat Rp6 triliun. Bank tersebut masuk KBMI berapa?',family:'boundary'};
+    if(t==='kbmi 2')return{question:'Modal inti sebuah bank tepat Rp14 triliun. Bank tersebut masuk KBMI berapa?',family:'boundary'};
+    if(t==='kbmi 3')return{question:'Modal inti sebuah bank tepat Rp70 triliun. Bank tersebut masuk KBMI berapa?',family:'boundary'};
+    if(t==='kbmi 4')return{question:'Modal inti sebuah bank Rp70,1 triliun. Bank tersebut masuk KBMI berapa?',family:'boundary'};
 
-    // Module pelayanan informasi memakai situasi nyata sebagai pembuka. Ini juga
-    // terbawa ke NUPMK unit kompetensi yang bersumber dari module 7.
-    if(Number(mid)===7)return serviceInformationQuestion(term,clue,index);
+    let m=raw.match(/^Jenis bank yang\s+(.+)$/i);if(m)return{question:`Bank yang ${lowerFirst(m[1])} termasuk jenis apa?`,family:'direct-type'};
+    m=raw.match(/^Produk dana yang\s+(.+)$/i);if(m)return{question:`Produk dana apa yang ${lowerFirst(m[1])}?`,family:'direct-product'};
+    m=raw.match(/^Produk (?:dana )?yang\s+(.+)$/i);if(m)return{question:`Produk apa yang ${lowerFirst(m[1])}?`,family:'direct-product'};
+    m=raw.match(/^Jasa bank (?:yang|untuk)\s+(.+)$/i);if(m)return{question:`Jasa bank apa yang ${lowerFirst(m[1])}?`,family:'direct-service'};
+    m=raw.match(/^Layanan (?:bank |perbankan )?yang\s+(.+)$/i);if(m)return{question:`Layanan apa yang ${lowerFirst(m[1])}?`,family:'direct-service'};
+    m=raw.match(/^Rasio (?:yang|untuk)\s+(.+)$/i);if(m)return{question:`Rasio apa yang ${lowerFirst(m[1])}?`,family:'direct-ratio'};
+    m=raw.match(/^Laporan yang\s+(.+)$/i);if(m)return{question:`Laporan apa yang ${lowerFirst(m[1])}?`,family:'direct-report'};
+    m=raw.match(/^Dokumen yang\s+(.+)$/i);if(m)return{question:`Dokumen apa yang ${lowerFirst(m[1])}?`,family:'direct-document'};
+    m=raw.match(/^Instrumen yang\s+(.+)$/i);if(m)return{question:`Instrumen apa yang ${lowerFirst(m[1])}?`,family:'direct-instrument'};
+    m=raw.match(/^Pihak yang\s+(.+)$/i);if(m)return{question:`Pihak yang ${lowerFirst(m[1])} disebut apa?`,family:'direct-party'};
+    m=raw.match(/^Unsur analisis kredit yang\s+(.+)$/i);if(m)return{question:`Dalam analisis kredit, unsur yang ${lowerFirst(m[1])} adalah?`,family:'direct-credit'};
+    m=raw.match(/^Risiko (?:akibat|karena|yang)\s+(.+)$/i);if(m)return{question:`Risiko akibat ${lowerFirst(m[1])} disebut apa?`,family:'direct-risk'};
+    m=raw.match(/^Simpanan yang\s+(.+)$/i);if(m)return{question:`Simpanan yang ${lowerFirst(m[1])} disebut apa?`,family:'direct-funding'};
 
-    let m=raw.match(/^Jenis bank yang\s+(.+)$/i);if(m)return`Bank yang ${lowerFirst(m[1])} termasuk jenis apa?`;
-    m=raw.match(/^Produk dana yang\s+(.+)$/i);if(m)return`Produk dana apa yang ${lowerFirst(m[1])}?`;
-    m=raw.match(/^Produk (?:dana )?yang\s+(.+)$/i);if(m)return`Produk apa yang ${lowerFirst(m[1])}?`;
-    m=raw.match(/^Jasa bank (?:yang|untuk)\s+(.+)$/i);if(m)return`Jasa bank apa yang ${lowerFirst(m[1])}?`;
-    m=raw.match(/^Layanan (?:bank |perbankan )?yang\s+(.+)$/i);if(m)return`Layanan apa yang ${lowerFirst(m[1])}?`;
-    m=raw.match(/^Rasio (?:yang|untuk)\s+(.+)$/i);if(m)return`Rasio apa yang ${lowerFirst(m[1])}?`;
-    m=raw.match(/^Laporan yang\s+(.+)$/i);if(m)return`Laporan apa yang ${lowerFirst(m[1])}?`;
-    m=raw.match(/^Dokumen yang\s+(.+)$/i);if(m)return`Dokumen apa yang ${lowerFirst(m[1])}?`;
-    m=raw.match(/^Instrumen yang\s+(.+)$/i);if(m)return`Instrumen apa yang ${lowerFirst(m[1])}?`;
-    m=raw.match(/^Pihak yang\s+(.+)$/i);if(m)return`Pihak yang ${lowerFirst(m[1])} disebut apa?`;
-    m=raw.match(/^Unsur analisis kredit yang\s+(.+)$/i);if(m)return`Dalam analisis kredit, unsur yang ${lowerFirst(m[1])} adalah?`;
-    m=raw.match(/^Risiko (?:akibat|karena|yang)\s+(.+)$/i);if(m)return`Risiko akibat ${lowerFirst(m[1])} disebut apa?`;
-    m=raw.match(/^Simpanan yang\s+(.+)$/i);if(m)return`Simpanan yang ${lowerFirst(m[1])} disebut apa?`;
-    m=raw.match(/^Bank yang\s+(.+)$/i);if(m)return`Bank yang ${lowerFirst(m[1])} disebut apa?`;
-
-    // Fallback: selalu mulai dari fakta/situasi, bukan dari template pertanyaan.
-    // Variasi ekor mencegah satu set terasa seperti hasil copy-paste mesin.
-    const lead=statement(raw),variant=hash(`${mid}|${term}|${index}`)%4;
-    if(variant===0)return`${lead} Istilah yang sesuai adalah?`;
-    if(variant===1)return`${lead} Hal ini dikenal sebagai?`;
-    if(variant===2)return`Dalam praktik perbankan, ${lowerFirst(raw)}. Istilah yang dimaksud adalah?`;
-    return`${lead} Apa sebutan yang tepat?`;
+    const variants=genericTails;
+    const pick=variants[seed%variants.length];
+    if(kind==='scenario'){
+      const scenarioForms=[
+        {family:'scenario-action',question:`${lead} ${pick.text}`},
+        {family:'scenario-context',question:`Dalam praktik perbankan, ${lowerFirst(raw)}. ${variants[(seed+3)%variants.length].text}`},
+        {family:'scenario-read',question:`Perhatikan situasi ini: ${lowerFirst(raw)}. ${variants[(seed+5)%variants.length].text}`}
+      ];
+      return scenarioForms[(seed>>>3)%scenarioForms.length];
+    }
+    if(kind==='control'){
+      const forms=[
+        {family:'control-why',question:`${lead} Kontrol atau prinsip yang diterapkan adalah?`},
+        {family:'control-aspect',question:`${lead} Aspek pengendalian yang paling terkait adalah?`},
+        {family:'control-practice',question:`Dalam proses tersebut, ${lowerFirst(raw)}. Praktik ini menunjukkan apa?`}
+      ];
+      return forms[(seed>>>4)%forms.length];
+    }
+    if(kind==='purpose'){
+      const forms=[
+        {family:'purpose-direct',question:`${lead} Tujuan utamanya berkaitan dengan apa?`},
+        {family:'purpose-concept',question:`${lead} Konsep yang mendasari tujuan tersebut adalah?`},
+        {family:'purpose-use',question:`Dalam praktiknya, ${lowerFirst(raw)}. Hal ini digunakan untuk tujuan apa?`}
+      ];
+      return forms[(seed>>>5)%forms.length];
+    }
+    if(kind==='process'){
+      const forms=[
+        {family:'process-stage',question:`${lead} Tahap atau prinsip yang dimaksud adalah?`},
+        {family:'process-read',question:`${lead} Bagian proses yang sedang dijelaskan adalah?`},
+        {family:'process-context',question:`Dalam alur proses, ${lowerFirst(raw)}. Hal ini paling terkait dengan apa?`}
+      ];
+      return forms[(seed>>>6)%forms.length];
+    }
+    if(kind==='noun'){
+      const nounForms=[
+        {family:'noun-identify',question:`${lead} Yang dimaksud adalah?`},
+        {family:'noun-use',question:`${lead} Bentuk yang paling sesuai adalah?`},
+        {family:'noun-classify',question:`${lead} Ini termasuk apa?`}
+      ];
+      return nounForms[(seed>>>7)%nounForms.length];
+    }
+    return{family:pick.family,question:`${lead} ${pick.text}`};
   }
 
   function familyKey(term,clue){
@@ -116,50 +149,22 @@
   }
   function pickDistractors(catalog,index,seed){
     const base=catalog[index];
-    return catalog
-      .filter((_,i)=>i!==index)
-      .map(x=>({term:x.term,score:distractorScore(base,x,seed)}))
-      .sort((a,b)=>b.score-a.score||a.term.localeCompare(b.term,'id'))
-      .slice(0,3)
-      .map(x=>x.term);
+    return catalog.filter((_,i)=>i!==index).map(x=>({term:x.term,score:distractorScore(base,x,seed)})).sort((a,b)=>b.score-a.score||a.term.localeCompare(b.term,'id')).slice(0,3).map(x=>x.term);
   }
 
   function add(data,sourceMap={}){
     for(const [midRaw,itemsRaw] of Object.entries(data||{})){
       const mid=Number(midRaw),items=(itemsRaw||[]).filter(x=>Array.isArray(x)&&clean(x[0])&&clean(x[1]));
       if(!mid||!items.length)continue;
-      const meta=bank.find(q=>Number(q.moduleId)===mid);
-      if(!meta)continue;
+      const meta=bank.find(q=>Number(q.moduleId)===mid);if(!meta)continue;
       const existingIds=new Set(bank.filter(q=>Number(q.moduleId)===mid).map(q=>String(q.id)));
       const catalog=items.map(item=>({term:clean(item[0]),clue:clean(item[1]),customQ:clean(item[2]||''),customExp:clean(item[3]||'')}));
       catalog.forEach((entry,i)=>{
-        const {term,clue,customQ,customExp}=entry;
-        const id=`MAT-M${String(mid).padStart(2,'0')}-${String(i+1).padStart(3,'0')}`;
+        const {term,clue,customQ,customExp}=entry,id=`MAT-M${String(mid).padStart(2,'0')}-${String(i+1).padStart(3,'0')}`;
         if(existingIds.has(id))return;
-        const distractors=pickDistractors(catalog,i,`${mid}:${i}:d`);
-        if(distractors.length<3)return;
-        const options=shuffle([term,...distractors],`${mid}:${i}:o`);
-        const question=customQ||naturalQuestion(term,clue,mid,i);
-        bank.push({
-          id,
-          day:Number(meta.day)||1,
-          moduleId:mid,
-          moduleName:meta.moduleName,
-          question,
-          options,
-          answer:term,
-          explanation:customExp||`${term}: ${clue}.`,
-          source:sourceMap[mid]||`Materi General Banking · ${meta.moduleName}`,
-          difficulty:'Challenge',
-          skill:i%4===0?'Analisis Kasus':'Konsep',
-          generated:false,
-          materialGrounded:true,
-          rootQuestionId:id,
-          baseId:id,
-          conceptSignature:conceptFingerprint(term,clue),
-          distractorVersion:'same-family-v1',
-          wordingVersion:'natural-v2'
-        });
+        const distractors=pickDistractors(catalog,i,`${mid}:${i}:d`);if(distractors.length<3)return;
+        const options=shuffle([term,...distractors],`${mid}:${i}:o`),wording=customQ?{question:customQ,family:'custom'}:naturalQuestion(term,clue,mid,i);
+        bank.push({id,day:Number(meta.day)||1,moduleId:mid,moduleName:meta.moduleName,question:wording.question,options,answer:term,explanation:customExp||`${term}: ${clue}.`,source:sourceMap[mid]||`Materi General Banking · ${meta.moduleName}`,difficulty:'Challenge',skill:i%4===0?'Analisis Kasus':'Konsep',generated:false,materialGrounded:true,rootQuestionId:id,baseId:id,conceptSignature:conceptFingerprint(term,clue),distractorVersion:'same-family-v1',wordingVersion:'natural-v3-global',wordingFamily:wording.family});
       });
     }
     window.__GBP_SOURCE_BANK__=bank.map(q=>({...q,options:Array.isArray(q.options)?[...q.options]:q.options}));
