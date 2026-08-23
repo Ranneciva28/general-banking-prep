@@ -4,50 +4,28 @@
   const SESSION_KEY='gbpAnalyticsSessionV1';
   const clean=text=>String(text||'').replace(/\s+/g,' ').trim();
 
-  // V5 used to synthesize a 5,000-slot bank for every module at startup.
-  // V28 is now the source of truth, so V5 only keeps compatibility/UI helpers.
+  // V28 is the source of truth. This file only keeps analytics/UI helpers.
   const sessionId=(()=>{let x=localStorage.getItem(SESSION_KEY);if(!x){x=`${Date.now().toString(36)}-${crypto.getRandomValues(new Uint32Array(2)).join('-')}`;localStorage.setItem(SESSION_KEY,x)}return x})();
   let analyticsCtx={page:'dashboardView',moduleId:null,day:null};
 
   function deviceInfo(){
     const ua=navigator.userAgent||'';
-    return{
-      device:/Android|iPhone|iPad|Mobile/i.test(ua)?'Mobile':'Desktop',
-      browser:/Edg\//.test(ua)?'Edge':/Chrome\//.test(ua)?'Chrome':/Safari\//.test(ua)&&!/Chrome\//.test(ua)?'Safari':/Firefox\//.test(ua)?'Firefox':'Other',
-      os:/Windows/i.test(ua)?'Windows':/Android/i.test(ua)?'Android':/iPhone|iPad|iOS/i.test(ua)?'iOS':/Mac OS/i.test(ua)?'macOS':/Linux/i.test(ua)?'Linux':'Other'
-    };
+    return{device:/Android|iPhone|iPad|Mobile/i.test(ua)?'Mobile':'Desktop',browser:/Edg\//.test(ua)?'Edge':/Chrome\//.test(ua)?'Chrome':/Safari\//.test(ua)&&!/Chrome\//.test(ua)?'Safari':/Firefox\//.test(ua)?'Firefox':'Other',os:/Windows/i.test(ua)?'Windows':/Android/i.test(ua)?'Android':/iPhone|iPad|iOS/i.test(ua)?'iOS':/Mac OS/i.test(ua)?'macOS':/Linux/i.test(ua)?'Linux':'Other'};
   }
   async function track(type,extra={}){
     const d=deviceInfo();
-    try{
-      await fetch(`${SUPA_URL}/rest/v1/rpc/gbp_track_event`,{
-        method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
-        body:JSON.stringify({
-          p_session_id:sessionId,p_event_type:type,p_page:extra.page??analyticsCtx.page,
-          p_module_id:extra.moduleId??analyticsCtx.moduleId,p_day:extra.day??analyticsCtx.day,
-          p_question_count:Math.min(50,Math.max(0,Number(extra.questionCount)||0)),
-          p_device_type:d.device,p_browser:d.browser,p_os:d.os,p_language:navigator.language||null,
-          p_timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||null,p_screen:`${screen.width}x${screen.height}`,
-          p_latitude:null,p_longitude:null,p_referrer:document.referrer||null,p_meta:extra.meta||{}
-        }),keepalive:true
-      });
-    }catch(e){}
+    try{await fetch(`${SUPA_URL}/rest/v1/rpc/gbp_track_event`,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({p_session_id:sessionId,p_event_type:type,p_page:extra.page??analyticsCtx.page,p_module_id:extra.moduleId??analyticsCtx.moduleId,p_day:extra.day??analyticsCtx.day,p_question_count:Math.min(50,Math.max(0,Number(extra.questionCount)||0)),p_device_type:d.device,p_browser:d.browser,p_os:d.os,p_language:navigator.language||null,p_timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||null,p_screen:`${screen.width}x${screen.height}`,p_latitude:null,p_longitude:null,p_referrer:document.referrer||null,p_meta:extra.meta||{}}),keepalive:true});}catch(e){}
   }
   window.GBPAnalytics={track,setContext:(next={})=>{analyticsCtx={...analyticsCtx,...next};track('view_change',next)},sessionId};
 
-  window.GBPQuestionBank=window.GBPQuestionBank||{
-    generate:mid=>window.GBPDatabaseQuestionBank?.reserveNew?.(mid),
-    bankInfo:mid=>window.GBPDatabaseQuestionBank?.bankInfo?.(mid)||{active:25,database:true},
-    BANK_SIZE:0,ACTIVE_LIMIT:25
-  };
+  window.GBPQuestionBank=window.GBPQuestionBank||{generate:mid=>window.GBPDatabaseQuestionBank?.reserveNew?.(mid),bankInfo:mid=>window.GBPDatabaseQuestionBank?.bankInfo?.(mid)||{active:25,database:true},BANK_SIZE:0,ACTIVE_LIMIT:25};
 
   function cleanUI(){
     const bridge=document.getElementById('bridgeLockedNav');if(bridge)bridge.style.display='none';
     const side=document.querySelector('.sidebar-study-card');if(side)side.style.display='none';
     const profile=document.querySelector('.profile-chip');if(profile)profile.style.display='none';
     const footer=document.querySelector('.footer');if(footer&&footer.textContent!=='Data tersimpan lokal di perangkat ini')footer.textContent='Data tersimpan lokal di perangkat ini';
-    const quick=document.querySelector('.quick-actions');
-    if(quick){quick.querySelectorAll('.quick-card:not(#weaknessDrillBtn)').forEach(x=>x.style.display='none');const title=quick.closest('.section-block')?.querySelector('.section-title-row');if(title)title.style.display='none';quick.classList.add('weakness-only-grid');}
+    const quick=document.querySelector('.quick-actions');if(quick){quick.querySelectorAll('.quick-card:not(#weaknessDrillBtn)').forEach(x=>x.style.display='none');const title=quick.closest('.section-block')?.querySelector('.section-title-row');if(title)title.style.display='none';quick.classList.add('weakness-only-grid');}
     document.querySelectorAll('.module-bank-box,.setup-bank-inline').forEach(x=>x.remove());
   }
 
@@ -67,14 +45,14 @@
     const total=Math.min(Number(info.bankSize)||0,500),remaining=Math.max(0,Number(info.remaining)||0),canGenerate=remaining>=25;
     let box=card.querySelector('.quiz-generate-box');if(!box){box=document.createElement('div');box.className='quiz-generate-box';card.appendChild(box);}
     const sig=`${mid}:${total}:${remaining}:${canGenerate}`;if(!force&&box.dataset.sig===sig)return;box.dataset.sig=sig;
-    box.innerHTML=`<div class="quiz-generate-copy"><span>QUESTION BANK</span><strong>${canGenerate?'Generate 25 soal baru':'Bank soal unik tidak cukup'}</strong><small>${canGenerate?'Ambil 25 soal baru yang belum pernah muncul di module ini.':'Tersisa kurang dari 25 soal unik yang belum pernah muncul.'}</small></div><button type="button" class="quiz-generate-btn" ${canGenerate?'':'disabled'}>↻ Generate 25 Soal Baru</button><div class="quiz-bank-meta">${remaining.toLocaleString('id-ID')} belum muncul · ${total.toLocaleString('id-ID')} soal unik tersedia · maksimum 500/module</div>`;
+    const title=canGenerate?'Generate 25 soal baru':'Seluruh materi unik sudah ter-cover';
+    const desc=canGenerate?'Ambil 25 soal baru yang belum pernah muncul di module ini.':'GBP Ranneciva Engine tidak lagi punya cukup 25 soal baru yang benar-benar berbeda. Kamu masih bisa mengacak ulang urutan 25 soal aktif tanpa membuat variasi semu.';
+    const buttonText=canGenerate?'↻ Generate 25 Soal Baru':'↻ Acak Ulang 25 Soal';
+    box.innerHTML=`<div class="quiz-generate-copy"><span>QUESTION BANK</span><strong>${title}</strong><small>${desc}</small></div><button type="button" class="quiz-generate-btn">${buttonText}</button><div class="quiz-bank-meta">${remaining.toLocaleString('id-ID')} soal unik baru tersisa · ${total.toLocaleString('id-ID')} soal unik tersedia · maksimum 500/module</div>`;
   }
 
   let scheduled=false,forceNext=false;
-  function refreshSoon(force=false){
-    forceNext=forceNext||force;if(scheduled)return;scheduled=true;
-    requestAnimationFrame(()=>{scheduled=false;const f=forceNext;forceNext=false;cleanUI();injectQuestionType();injectQuizGenerator(f);});
-  }
+  function refreshSoon(force=false){forceNext=forceNext||force;if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;const f=forceNext;forceNext=false;cleanUI();injectQuestionType();injectQuizGenerator(f);});}
   document.addEventListener('DOMContentLoaded',()=>{
     refreshSoon(true);
     const tag=document.getElementById('moduleTag');if(tag)new MutationObserver(()=>refreshSoon()).observe(tag,{childList:true,characterData:true,subtree:true});
