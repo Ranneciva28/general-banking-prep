@@ -11,38 +11,53 @@
   <title>General Banking Prep</title>
   <script>
     (()=>{
-      const BUILD='2026.08.22.1055';
+      const BUILD='2026.08.23.2358-global-cache-v29';
       const KEY='gbpForcedCacheBuild';
+      const REFRESH_PARAM='_gbp_build';
       const clearRuntime=async()=>{
         try{if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()));}}catch(e){}
         try{if('caches' in window){const names=await caches.keys();await Promise.all(names.map(n=>caches.delete(n)));}}catch(e){}
-        try{localStorage.removeItem('generalBankingGeneratedV5');localStorage.removeItem('generalBankingQuestionBankV5');}catch(e){}
+      };
+      const cleanRefreshParam=()=>{
+        try{
+          const u=new URL(location.href);
+          if(u.searchParams.has(REFRESH_PARAM)){
+            u.searchParams.delete(REFRESH_PARAM);
+            history.replaceState(history.state,'',`${u.pathname}${u.search}${u.hash}`);
+          }
+        }catch(e){}
       };
       window.__GBP_BUILD__=BUILD;
-      try{
-        const u=new URL(location.href);
-        let changed=false;
-        ['_build','_cache','_ts','_manualclear'].forEach(k=>{if(u.searchParams.has(k)){u.searchParams.delete(k);changed=true;}});
-        if(changed)history.replaceState(history.state,'',`${u.pathname}${u.search}${u.hash}`);
-      }catch(e){}
       (async()=>{
+        let live=BUILD;
         try{
           const res=await fetch(`version.json?t=${Date.now()}`,{cache:'no-store'});
           const remote=await res.json();
-          const live=remote?.build||BUILD;
-          if(localStorage.getItem(KEY)!==live){
+          live=remote?.build||BUILD;
+        }catch(e){}
+        try{
+          const previous=localStorage.getItem(KEY);
+          if(!previous){
+            localStorage.setItem(KEY,live);
+            cleanRefreshParam();
+            return;
+          }
+          if(previous!==live){
             await clearRuntime();
             localStorage.setItem(KEY,live);
-            location.reload();
+            const u=new URL(location.href);
+            u.searchParams.set(REFRESH_PARAM,live);
+            location.replace(u.toString());
+            return;
           }
-        }catch(e){
-          if(localStorage.getItem(KEY)!==BUILD){await clearRuntime();localStorage.setItem(KEY,BUILD);location.reload();}
-        }
+        }catch(e){}
+        cleanRefreshParam();
       })();
     })();
   </script>
-  <link rel="stylesheet" href="css/style.css?v=2026.08.22.1055" />
-  <link rel="stylesheet" href="css/v5.css?v=2026.08.22.1055" />
+  <link rel="stylesheet" href="css/style.css?v=2026.08.23.2358-global-cache-v29" />
+  <link rel="stylesheet" href="css/v5.css?v=2026.08.23.2358-global-cache-v29" />
+  <link rel="preload" href="js/questions.js?v=2026.08.23.2358-global-cache-v29" as="script" />
 </head>
 <body>
   <div class="app-layout">
@@ -267,24 +282,24 @@
 
   <div id="toast" class="toast hidden"></div>
   <div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
-  <script src="js/cache-control.js?v=2026.08.22.1055"></script>
-  <script src="js/questions.js?v=2026.08.22.1055"></script>
-  <script src="js/material-bank-core.js?v=2026.08.22.1055"></script>
-  <script src="js/material-bank-d1.js?v=2026.08.22.1055"></script>
-  <script src="js/material-bank-d2.js?v=2026.08.22.1055"></script>
-  <script src="js/material-bank-d3.js?v=2026.08.22.1055"></script>
-  <script src="js/material-bank-d4d5.js?v=2026.08.22.1055"></script>
-  <script src="js/material-bank-extra.js?v=2026.08.22.1055"></script>
-  <script src="js/bridge-module.js?v=2026.08.22.1055"></script>
-  <script src="js/bridge-category.js?v=2026.08.22.1055"></script>
-  <script src="js/nupmk-modules.js?v=2026.08.22.1055"></script>
-  <script src="js/v5-patch.js?v=2026.08.22.1055"></script>
-  <script src="js/v23-quality-bank.js?v=2026.08.22.1055"></script>
-  <script src="js/generate-progress.js?v=2026.08.22.1055"></script>
-  <script src="js/v14-db-bank.js?v=2026.08.22.1055"></script>
-  <script src="js/v16-dedupe.js?v=2026.08.22.1055"></script>
-  <script src="js/app.js?v=2026.08.22.1055"></script>
-  <script src="js/v10-usage-watch.js?v=2026.08.22.1055"></script>
-  <script src="js/nupmk-ui.js?v=2026.08.22.1055"></script>
+  <script defer src="js/cache-control.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/questions.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/material-bank-core.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/material-bank-d1.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/material-bank-d2.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/material-bank-d3.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/material-bank-d4d5.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/material-bank-extra.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/bridge-module.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/bridge-category.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/nupmk-modules.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/v5-patch.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/v23-quality-bank.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/generate-progress.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/v14-db-bank.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/v16-dedupe.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/app.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/v10-usage-watch.js?v=2026.08.23.2358-global-cache-v29"></script>
+  <script defer src="js/nupmk-ui.js?v=2026.08.23.2358-global-cache-v29"></script>
 </body>
 </html>
