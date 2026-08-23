@@ -53,34 +53,43 @@
     setProgress(18,'Memilih set soal baru…');
   }
 
-  function hideProgress(){
-    overlay?.classList.remove('show','done');
-    document.documentElement.style.overflow='';
-  }
-
-  function toast(msg){
-    const el=document.getElementById('toast');
-    if(!el)return;
-    el.textContent=msg;
-    el.classList.remove('hidden');
-    clearTimeout(toast.t);
-    toast.t=setTimeout(()=>el.classList.add('hidden'),3200);
-  }
+  function hideProgress(){overlay?.classList.remove('show','done');document.documentElement.style.overflow='';}
+  function toast(msg){const el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add('hidden'),3200);}
 
   function clearModuleProgress(mid){
-    try{
-      const all=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'{}')||{};
-      delete all[String(mid)];
-      localStorage.setItem(PROGRESS_KEY,JSON.stringify(all));
-    }catch(e){localStorage.removeItem(PROGRESS_KEY);}
+    try{const all=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'{}')||{};delete all[String(mid)];localStorage.setItem(PROGRESS_KEY,JSON.stringify(all));}catch(e){localStorage.removeItem(PROGRESS_KEY);}
     try{window.GBPApp?.clearModuleProgress?.(mid);}catch(e){}
   }
 
   function moduleIdFromCurrentView(){
-    const name=document.getElementById('moduleTag')?.textContent?.trim();
-    if(!name)return null;
-    const q=(window.QUESTION_BANK||[]).find(x=>x.moduleName===name);
-    return q?Number(q.moduleId):null;
+    const name=document.getElementById('moduleTag')?.textContent?.trim();if(!name)return null;
+    const q=(window.QUESTION_BANK||[]).find(x=>x.moduleName===name);return q?Number(q.moduleId):null;
+  }
+
+  function wordingDiversity(questions){
+    const material=questions.filter(q=>q?.wordingFamily);
+    if(material.length<8)return{ok:true,material:material.length,maxFamily:0,families:0};
+    const counts=new Map();
+    for(const q of material){const f=String(q.wordingFamily||'other');counts.set(f,(counts.get(f)||0)+1);}
+    const maxFamily=Math.max(...counts.values(),0),families=counts.size;
+    const allowed=Math.max(5,Math.ceil(material.length*.28));
+    return{ok:maxFamily<=allowed&&families>=Math.min(5,Math.ceil(material.length/5)),material:material.length,maxFamily,families,allowed};
+  }
+
+  async function reserveDiverseSet(api,mid){
+    let activeSlots=[],active=[],stats=null,lastErr=null;
+    for(let attempt=1;attempt<=3;attempt++){
+      try{
+        activeSlots=await api.reserveNew(mid);
+        active=(window.QUESTION_BANK||[]).filter(q=>Number(q.moduleId)===Number(mid));
+        stats=wordingDiversity(active);
+        if(stats.ok)return{activeSlots,active,stats,attempt};
+        console.warn(`Generated wording set too repetitive M${mid}, retry ${attempt}`,stats);
+        setProgress(52+attempt*8,`Set ${attempt} terlalu seragam. Mencari variasi wording lain…`);
+      }catch(err){lastErr=err;break;}
+    }
+    if(lastErr&&(!activeSlots||!activeSlots.length))throw lastErr;
+    return{activeSlots,active,stats,attempt:3};
   }
 
   async function runGenerate(mid,button){
@@ -90,48 +99,37 @@
     if(button){button.disabled=true;button.textContent='Generating…';}
     showProgress();
     try{
-      setProgress(42,'Membandingkan struktur dan learning objective…');
-      const activeSlots=await api.reserveNew(mid);
-      const active=(window.QUESTION_BANK||[]).filter(q=>Number(q.moduleId)===Number(mid));
+      setProgress(38,'Membandingkan struktur, konsep, dan variasi wording…');
+      const result=await reserveDiverseSet(api,mid);
+      const activeSlots=result.activeSlots,active=result.active;
       clearModuleProgress(mid);
-      setProgress(82,'Memasang 25 soal yang benar-benar berbeda…');
-      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length||activeSlots.length,meta:{databaseBank:true,engine:'v26-distinct-structure',replaceAll25:true,noReload:true,semanticDiversity:true,numberOnlyChangesBlocked:true}});}catch(e){}
+      setProgress(84,'Memasang set soal dengan bentuk pertanyaan yang beragam…');
+      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length||activeSlots.length,meta:{databaseBank:true,engine:'v26-distinct-structure',replaceAll25:true,noReload:true,semanticDiversity:true,numberOnlyChangesBlocked:true,wordingDiversity:true,wordingFamilies:result.stats?.families||0,generationAttempts:result.attempt}});}catch(e){}
       await sleep(120);
       const app=window.GBPApp;
       if(app?.startModule){
         app.startModule(mid);
         await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-        overlay.classList.add('done');
-        titleEl.textContent='25 soal baru siap';
-        setProgress(100,'Selesai. Angka saja tidak dihitung sebagai soal baru.');
-        await sleep(180);
-        hideProgress();
-        window.scrollTo({top:0,behavior:'smooth'});
-        toast('25 soal baru aktif dengan struktur dan substansi berbeda.');
+        overlay.classList.add('done');titleEl.textContent='Set soal baru siap';
+        setProgress(100,'Selesai. Substansi, struktur, dan gaya pertanyaan sudah divariasikan.');
+        await sleep(180);hideProgress();window.scrollTo({top:0,behavior:'smooth'});
+        toast('Set soal baru aktif dengan bentuk pertanyaan yang lebih beragam.');
       }else{
-        sessionStorage.setItem('gbpAutoOpenModule',String(mid));
-        sessionStorage.setItem('gbpGenerationToast','25 soal baru sudah aktif.');
-        location.reload();
+        sessionStorage.setItem('gbpAutoOpenModule',String(mid));sessionStorage.setItem('gbpGenerationToast','Set soal baru sudah aktif.');location.reload();
       }
     }catch(err){
-      console.error(err);
-      hideProgress();
-      if(button){button.disabled=false;button.textContent=oldText;}
-      toast('Belum tersedia 25 soal baru yang benar-benar berbeda secara substansi.');
+      console.error(err);hideProgress();if(button){button.disabled=false;button.textContent=oldText;}
+      toast('Belum tersedia set baru yang cukup berbeda secara substansi dan bentuk.');
     }
   }
 
   document.addEventListener('click',e=>{
-    const button=e.target.closest?.('.quiz-generate-btn');
-    if(!button)return;
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    const mid=moduleIdFromCurrentView();
-    if(!mid){toast('Module tidak terdeteksi. Refresh halaman lalu coba lagi.');return;}
-    if(!confirm('Ganti seluruh 25 soal aktif dengan 25 soal baru yang berbeda?'))return;
+    const button=e.target.closest?.('.quiz-generate-btn');if(!button)return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    const mid=moduleIdFromCurrentView();if(!mid){toast('Module tidak terdeteksi. Refresh halaman lalu coba lagi.');return;}
+    if(!confirm('Ganti seluruh soal aktif dengan set baru yang benar-benar berbeda?'))return;
     runGenerate(mid,button);
   },true);
 
-  window.GBPGenerateProgress={show:showProgress,set:setProgress,hide:hideProgress};
+  window.GBPGenerateProgress={show:showProgress,set:setProgress,hide:hideProgress,wordingDiversity};
 })();
