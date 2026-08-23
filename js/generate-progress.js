@@ -2,6 +2,8 @@
   const PROGRESS_KEY='generalBankingModuleProgressV1';
   let overlay=null,fill=null,percentEl=null,stageEl=null,titleEl=null;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  const SUPA_URL='https://pnisrktkkbzspolkfkag.supabase.co';
+  const SUPA_KEY='sb_publishable_ClLcjnxymypzS2O6x1TzwA_c9y7-j1Y';
 
   function ensureOverlay(){
     if(overlay)return overlay;
@@ -32,8 +34,39 @@
   function hideProgress(){overlay?.classList.remove('show','done');document.documentElement.style.overflow='';}
   function toast(msg){const el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add('hidden'),3600);}
   function setButtonReady(button,text){if(!button)return;button.disabled=false;button.textContent=text||'↻ Generate 25 Soal Baru';button.removeAttribute('aria-busy');}
-  function announceBankUpdate(mid,info){
-    try{document.dispatchEvent(new CustomEvent('gbp:bank-updated',{detail:{moduleId:Number(mid),info:info||null}}));}catch(e){}
+  function announceBankUpdate(mid,info){try{document.dispatchEvent(new CustomEvent('gbp:bank-updated',{detail:{moduleId:Number(mid),info:info||null}}));}catch(e){}}
+  const norm=s=>String(s??'').toLocaleLowerCase('id-ID').replace(/[^a-z0-9à-öø-ÿ]+/giu,' ').replace(/\s+/g,' ').trim();
+  const rootKey=q=>String(q?.rootQuestionId||q?.baseId||q?.id||'');
+  function remoteConceptKey(q,api){
+    const explicit=String(q?.conceptSignature||'');if(explicit)return norm(explicit);
+    const structure=api?.structureKey?.(q)||norm(q?.question||'');
+    return `${norm(q?.answer||'')}|${structure}`;
+  }
+  async function syncGeneratedV28(mid,questions,api,attempt=1){
+    if(!api?.clientId||!Array.isArray(questions)||!questions.length)return false;
+    const payload=questions.slice(0,25).map(q=>({
+      question:q.question,
+      answer:q.answer,
+      rootKey:rootKey(q),
+      conceptKey:remoteConceptKey(q,api),
+      structureKey:api?.structureKey?.(q)||norm(q.question)
+    }));
+    try{
+      const r=await fetch(`${SUPA_URL}/rest/v1/rpc/gbp_question_register_batch_v28`,{
+        method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+        body:JSON.stringify({p_client_id:api.clientId,p_module_id:Number(mid),p_questions:payload,p_requested_count:payload.length,p_source_reason:'generate'}),
+        keepalive:true
+      });
+      if(!r.ok)throw new Error(await r.text()||'v28-sync-failed');
+      const data=await r.json();
+      try{document.dispatchEvent(new CustomEvent('gbp:bank-sync',{detail:{moduleId:Number(mid),ok:true,data}}));}catch(e){}
+      return true;
+    }catch(err){
+      console.warn('V28 generated-question sync failed',err);
+      if(attempt<2){await sleep(850);return syncGeneratedV28(mid,questions,api,attempt+1);}
+      try{document.dispatchEvent(new CustomEvent('gbp:bank-sync',{detail:{moduleId:Number(mid),ok:false}}));}catch(e){}
+      return false;
+    }
   }
 
   function clearModuleProgress(mid){try{const all=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'{}')||{};delete all[String(mid)];localStorage.setItem(PROGRESS_KEY,JSON.stringify(all));}catch(e){localStorage.removeItem(PROGRESS_KEY);}try{window.GBPApp?.clearModuleProgress?.(mid);}catch(e){}}
@@ -61,22 +94,21 @@
       clearModuleProgress(mid);setProgress(82,'Memasang tepat 25 soal baru…');
       const after=api.bankInfo?.(mid)||before;
 
-      // Update the bank metadata immediately. Do not wait for the quiz DOM to
-      // mutate, otherwise the old disabled Generate button can remain frozen.
       announceBankUpdate(mid,after);
+      // Remote history is best-effort and never blocks the UI. Local V28 history
+      // has already been committed by reserveNew before this point.
+      void syncGeneratedV28(mid,active,api);
 
-      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length||activeSlots.length,meta:{engine:'v28-honest-500',replaceAll25:true,noReload:true,bankLimit:500,bankSize:after.bankSize,remaining:after.remaining,numberOnlyChangesBlocked:true,semanticDiversity:true}});}catch(e){}
+      try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length||activeSlots.length,meta:{engine:'v28-honest-500',replaceAll25:true,noReload:true,bankLimit:500,bankSize:after.bankSize,remaining:after.remaining,numberOnlyChangesBlocked:true,semanticDiversity:true,remoteTracking:'v28'}});}catch(e){}
       await sleep(100);
       const app=window.GBPApp;
       if(app?.startModule){
         app.startModule(mid);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-        announceBankUpdate(mid,after);
-        setButtonReady(button,oldText);
+        announceBankUpdate(mid,after);setButtonReady(button,oldText);
         overlay.classList.add('done');titleEl.textContent='25 soal baru siap';setProgress(100,`${after.remaining} soal unik masih belum pernah muncul.`);await sleep(170);hideProgress();window.scrollTo({top:0,behavior:'smooth'});
         toast(`25 soal baru aktif · ${after.remaining} soal unik masih tersedia.`);
       }else{
-        setButtonReady(button,oldText);
-        sessionStorage.setItem('gbpAutoOpenModule',String(mid));sessionStorage.setItem('gbpGenerationToast','25 soal baru sudah aktif.');location.reload();
+        setButtonReady(button,oldText);sessionStorage.setItem('gbpAutoOpenModule',String(mid));sessionStorage.setItem('gbpGenerationToast','25 soal baru sudah aktif.');location.reload();
       }
     }catch(err){
       console.error(err);hideProgress();setButtonReady(button,oldText);
