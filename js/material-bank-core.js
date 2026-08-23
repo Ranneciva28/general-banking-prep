@@ -16,14 +16,37 @@
     if(key.length>=2)return `material-concept:${key.join('|')}`;
     return `material-concept:${norm(term)}|${norm(clue)}`;
   }
-  function directQuestion(term,clue){
-    const t=norm(term);
-    if(t==='kbmi 1')return'Setelah penyesuaian modal, modal inti sebuah bank tepat Rp6 triliun. Berdasarkan batas pengelompokan modal inti, bank tersebut termasuk?';
-    if(t==='kbmi 2')return'Setelah aksi korporasi, modal inti sebuah bank menjadi tepat Rp14 triliun. Berdasarkan batas pengelompokan modal inti, bank tersebut termasuk?';
-    if(t==='kbmi 3')return'Modal inti sebuah bank setelah konsolidasi tercatat tepat Rp70 triliun. Berdasarkan batas pengelompokan modal inti, bank tersebut termasuk?';
-    if(t==='kbmi 4')return'Setelah tambahan modal, modal inti sebuah bank meningkat menjadi Rp70,1 triliun. Berdasarkan batas pengelompokan modal inti, bank tersebut termasuk?';
-    let s=clean(clue).replace(/[.?!:;]+$/,'');
-    return s?`${s} adalah?`:'';
+  function stripTail(s){return clean(s).replace(/[.?!:;…]+$/,'');}
+  function lowerFirst(s){
+    s=clean(s);if(!s)return s;
+    if(/^(USD|IDR|EUR|JPY|GBP|SGD|AUD|CNY|FX|KBMI|KPR|KKB|KTA|L\/C|LC|SKBDN|SWIFT|MT\d+|CKPN|RTO|RPO|BIA|BCP|DRP|DRC|CDD|EDD|PEP)\b/.test(s))return s;
+    return s.charAt(0).toLocaleLowerCase('id-ID')+s.slice(1);
+  }
+  function naturalQuestion(term,clue){
+    const t=norm(term),raw=stripTail(clue);
+    if(t==='kbmi 1')return'Modal inti sebuah bank tepat Rp6 triliun. Bank tersebut masuk KBMI berapa?';
+    if(t==='kbmi 2')return'Modal inti sebuah bank tepat Rp14 triliun. Bank tersebut masuk KBMI berapa?';
+    if(t==='kbmi 3')return'Modal inti sebuah bank tepat Rp70 triliun. Bank tersebut masuk KBMI berapa?';
+    if(t==='kbmi 4')return'Modal inti sebuah bank Rp70,1 triliun. Bank tersebut masuk KBMI berapa?';
+
+    let m=raw.match(/^Jenis bank yang\s+(.+)$/i);if(m)return`Bank yang ${lowerFirst(m[1])} termasuk jenis apa?`;
+    m=raw.match(/^Produk dana yang\s+(.+)$/i);if(m)return`Produk dana apa yang ${lowerFirst(m[1])}?`;
+    m=raw.match(/^Produk (?:dana )?yang\s+(.+)$/i);if(m)return`Produk apa yang ${lowerFirst(m[1])}?`;
+    m=raw.match(/^Jasa bank (?:yang|untuk)\s+(.+)$/i);if(m)return`Jasa bank apa yang ${lowerFirst(m[1])}?`;
+    m=raw.match(/^Layanan (?:bank |perbankan )?yang\s+(.+)$/i);if(m)return`Layanan apa yang ${lowerFirst(m[1])}?`;
+    m=raw.match(/^Rasio (?:yang|untuk)\s+(.+)$/i);if(m)return`Rasio apa yang ${lowerFirst(m[1])}?`;
+    m=raw.match(/^Laporan yang\s+(.+)$/i);if(m)return`Laporan apa yang ${lowerFirst(m[1])}?`;
+    m=raw.match(/^Dokumen yang\s+(.+)$/i);if(m)return`Dokumen apa yang ${lowerFirst(m[1])}?`;
+    m=raw.match(/^Instrumen yang\s+(.+)$/i);if(m)return`Instrumen apa yang ${lowerFirst(m[1])}?`;
+    m=raw.match(/^Pihak yang\s+(.+)$/i);if(m)return`Pihak yang ${lowerFirst(m[1])} disebut apa?`;
+    m=raw.match(/^Unsur analisis kredit yang\s+(.+)$/i);if(m)return`Dalam analisis kredit, unsur yang ${lowerFirst(m[1])} adalah?`;
+    m=raw.match(/^Risiko (?:akibat|karena|yang)\s+(.+)$/i);if(m)return`Risiko akibat ${lowerFirst(m[1])} disebut apa?`;
+    m=raw.match(/^Simpanan yang\s+(.+)$/i);if(m)return`Simpanan yang ${lowerFirst(m[1])} disebut apa?`;
+    m=raw.match(/^Bank yang\s+(.+)$/i);if(m)return`Bank yang ${lowerFirst(m[1])} disebut apa?`;
+
+    // Fallback stays direct, but sounds like a person asking a question rather
+    // than a generated definition template.
+    return`Apa istilah yang tepat untuk ${lowerFirst(raw)}?`;
   }
 
   function familyKey(term,clue){
@@ -86,7 +109,7 @@
         const distractors=pickDistractors(catalog,i,`${mid}:${i}:d`);
         if(distractors.length<3)return;
         const options=shuffle([term,...distractors],`${mid}:${i}:o`);
-        const question=customQ||directQuestion(term,clue);
+        const question=customQ||naturalQuestion(term,clue);
         bank.push({
           id,
           day:Number(meta.day)||1,
@@ -104,7 +127,8 @@
           rootQuestionId:id,
           baseId:id,
           conceptSignature:conceptFingerprint(term,clue),
-          distractorVersion:'same-family-v1'
+          distractorVersion:'same-family-v1',
+          wordingVersion:'natural-v1'
         });
       });
     }
