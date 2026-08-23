@@ -53,6 +53,33 @@
       .replace(/\s+[—–-]\s+sesuai konteks\b.*$/i,'')));
   }
 
+  // Anti-answer-leak rule, applied to every module before the V28 bank is built.
+  // When all four choices are parallel taxonomy labels followed by explanations,
+  // keep only the labels. The explanation belongs in the stem/review, not inside
+  // a choice where it can mirror the clue and reveal the answer.
+  function parseOptionLabel(raw){
+    const s=cleanOption(raw);
+    let m=s.match(/^(.{2,48}?)(?:\s*:\s+|\s+[—–-]\s+)(.{6,})$/u);
+    if(!m)m=s.match(/^(.{2,48}?)\s*\((.{8,})\)\s*$/u);
+    if(!m)return null;
+    const label=clean(m[1]),detail=clean(m[2]);
+    const words=label.split(/\s+/).filter(Boolean).length;
+    if(!label||!detail||words>6||label.length>48||/[.!?;]/.test(label))return null;
+    return{label:normalizeEYD(label),detail};
+  }
+  function simplifyOptionSet(rawOptions){
+    const cleaned=rawOptions.map(cleanOption);
+    const parsed=cleaned.map(parseOptionLabel);
+    if(parsed.some(x=>!x))return cleaned;
+    const labels=parsed.map(x=>x.label),labelNorm=labels.map(norm);
+    if(new Set(labelNorm).size!==4)return cleaned;
+    const avgLabel=labels.reduce((n,x)=>n+x.length,0)/labels.length;
+    const avgDetail=parsed.reduce((n,x)=>n+x.detail.length,0)/parsed.length;
+    const conciseLabels=labels.every(x=>x.length<=42&&x.split(/\s+/).length<=6);
+    if(!conciseLabels||avgDetail<Math.max(10,avgLabel*.65))return cleaned;
+    return labels;
+  }
+
   function naturalizeQuestion(raw){
     return clean(raw)
       .replace(/^Berdasarkan (?:informasi|data|kondisi|kasus|situasi) (?:di atas|tersebut),?\s*/i,'')
@@ -117,18 +144,18 @@
     const rootKey=`${mid}|${root}`;
     if(!root||!mid||seenRoots.has(rootKey))continue;
     const answerIndex=base.options.findIndex(x=>norm(x)===norm(base.answer));if(answerIndex<0)continue;
-    const options=base.options.map(cleanOption);if(new Set(options.map(norm)).size!==4)continue;
+    const options=simplifyOptionSet(base.options);if(new Set(options.map(norm)).size!==4)continue;
     const question=compact(base.question),stem=norm(question),stemKey=`${mid}|${stem}`;
     if(!stem||banned.test(question)||seenStems.has(stemKey))continue;
     if(question.length>MAX_STEM)continue;
     if(/…|\.{3,}/.test(question))continue;
     seenRoots.add(rootKey);seenStems.add(stemKey);
     const conceptSignature=String(base.conceptSignature||'').startsWith('material-concept:')?base.conceptSignature:`m${mid}|root:${root}`;
-    out.push({...base,id:`V27-M${mid}-${root}`,question,options,answer:options[answerIndex],questionType:/\bKECUALI\b/i.test(question)?'Kecuali':(base.skill==='Analisis Kasus'?'Analisis Kasus':'Pilihan Ganda'),rootQuestionId:root,baseId:root,variantMode:'natural-full-stem',conceptSignature,generated:!!base.generated,qualityVersion:'V27-natural-concise'});
+    out.push({...base,id:`V28-M${mid}-${root}`,question,options,answer:options[answerIndex],questionType:/\bKECUALI\b/i.test(question)?'Kecuali':(base.skill==='Analisis Kasus'?'Analisis Kasus':'Pilihan Ganda'),rootQuestionId:root,baseId:root,variantMode:'natural-full-stem-no-option-leak',conceptSignature,generated:!!base.generated,qualityVersion:'V28-natural-no-option-leak'});
   }
 
   if(out.length){
     window.__GBP_SOURCE_BANK__=out;
-    window.__GBP_QUALITY_BANK_VERSION__='V27-natural-concise';
+    window.__GBP_QUALITY_BANK_VERSION__='V28-natural-no-option-leak';
   }
 })();
