@@ -38,7 +38,7 @@
   }
   const structureKey=q=>{const raw=String(q?.question||'');if(STRUCT_CACHE.has(raw))return STRUCT_CACHE.get(raw);const v=norm(neutralizeValues(raw));STRUCT_CACHE.set(raw,v);return v;};
 
-  const stop=new Set('yang dan atau untuk pada dalam dengan dari ke di ini itu tersebut sebuah suatu seorang adalah ialah merupakan sebagai agar serta paling lebih tepat sesuai analisis keputusan tindakan kesimpulan jawaban pilihan manakah apakah apa bagaimana mengapa berikut kondisi kasus situasi bank nasabah unit petugas proses dilakukan melakukan saat ketika jika maka perlu harus dapat akan mana berdasarkan terhadap terkait konteks value currency month weekday tvalue period perusahaan istilah konsep menggambarkan menunjukkan merujuk dimaksud dikenal sebutan'.split(' '));
+  const stop=new Set('yang dan atau untuk pada dalam dengan dari ke di ini itu tersebut sebuah suatu seorang adalah ialah merupakan sebagai agar serta paling lebih tepat sesuai analisis keputusan tindakan kesimpulan jawaban pilihan manakah apakah apa bagaimana mengapa berikut kondisi kasus situasi bank nasabah unit petugas proses dilakukan melakukan saat ketika jika maka perlu harus dapat akan mana berdasarkan terhadap terkait konteks value currency month weekday tvalue period perusahaan istilah konsep menggambarkan menunjukkan merujuk dimaksud dikenal sebutan peningkatan penurunan meningkat menurun dicatat mencatat sisi akun saldo normal memiliki mempunyai bertambah berkurang naik turun'.split(' '));
   const promptTail=/(?:[.!?…]\s*)?(?:analisis|keputusan|tindakan|kesimpulan|jawaban|pilihan|fungsi|konsep|produk|risiko|transformasi|langkah|kontrol|prinsip|peran|istilah|kategori|aspek)\s+(?:apa|mana|yang)?\s*(?:paling\s+)?(?:tepat|sesuai|relevan|benar|utama|dominan|baik)?\s*(?:adalah)?\s*[.?…]*$/i;
   const genericAsk=/(?:[.!?…]\s*)?(?:manakah|apakah|apa|bagaimana|mengapa)\b[^.!?…]{0,95}[?…]*$/i;
   function coreStem(q){
@@ -74,9 +74,9 @@
   }
   function validQuestion(q){return !!(q&&textKey(q)&&rootKey(q)&&Array.isArray(q.options)&&q.options.length===4&&new Set(q.options.map(norm)).size===4&&q.options.some(x=>clean(x)===clean(q.answer)));}
 
-  // Build an honest maximum-500 bank per module. We collapse exact roots,
-  // number/name-only variants, and repeated material learning objectives before
-  // selection. We never manufacture extra questions to reach 500.
+  // Build an honest maximum-500 bank per module. Exact roots, number/name-only
+  // variants, and repeated learning-objective fingerprints are collapsed here.
+  // If a module has fewer genuinely different questions, its bank stays smaller.
   const POOLS=new Map();
   const rawByModule=new Map();
   for(const q of SOURCE){const mid=Number(q?.moduleId)||0;if(!mid||!validQuestion(q))continue;let arr=rawByModule.get(mid);if(!arr){arr=[];rawByModule.set(mid,arr);}arr.push(q);}
@@ -84,9 +84,9 @@
     const chosen=[],roots=new Set(),structures=new Set(),concepts=new Set();
     for(const q of candidates){
       if(chosen.length>=BANK_LIMIT)break;
-      const rk=rootKey(q),sk=structureKey(q),ck=conceptKey(q),explicit=String(q?.conceptSignature||'').startsWith('material-concept:');
-      if(roots.has(rk)||structures.has(sk)||(explicit&&concepts.has(ck)))continue;
-      roots.add(rk);structures.add(sk);if(explicit)concepts.add(ck);chosen.push(q);
+      const rk=rootKey(q),sk=structureKey(q),ck=conceptKey(q);
+      if(roots.has(rk)||structures.has(sk)||concepts.has(ck))continue;
+      roots.add(rk);structures.add(sk);concepts.add(ck);chosen.push(q);
     }
     if(chosen.length)POOLS.set(mid,chosen);
   }
