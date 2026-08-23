@@ -16,7 +16,12 @@
     if(key.length>=2)return `material-concept:${key.join('|')}`;
     return `material-concept:${norm(term)}|${norm(clue)}`;
   }
-  function directQuestion(clue){
+  function directQuestion(term,clue){
+    const t=norm(term);
+    if(t==='kbmi 1')return'Setelah penyesuaian modal, modal inti sebuah bank tepat Rp6 triliun. Berdasarkan batas pengelompokan modal inti, bank tersebut termasuk?';
+    if(t==='kbmi 2')return'Setelah aksi korporasi, modal inti sebuah bank menjadi tepat Rp14 triliun. Berdasarkan batas pengelompokan modal inti, bank tersebut termasuk?';
+    if(t==='kbmi 3')return'Modal inti sebuah bank setelah konsolidasi tercatat tepat Rp70 triliun. Berdasarkan batas pengelompokan modal inti, bank tersebut termasuk?';
+    if(t==='kbmi 4')return'Setelah tambahan modal, modal inti sebuah bank meningkat menjadi Rp70,1 triliun. Berdasarkan batas pengelompokan modal inti, bank tersebut termasuk?';
     let s=clean(clue).replace(/[.?!:;]+$/,'');
     return s?`${s} adalah?`:'';
   }
@@ -81,7 +86,7 @@
         const distractors=pickDistractors(catalog,i,`${mid}:${i}:d`);
         if(distractors.length<3)return;
         const options=shuffle([term,...distractors],`${mid}:${i}:o`);
-        const question=customQ||directQuestion(clue);
+        const question=customQ||directQuestion(term,clue);
         bank.push({
           id,
           day:Number(meta.day)||1,
