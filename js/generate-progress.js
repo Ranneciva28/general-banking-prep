@@ -31,6 +31,10 @@
   function showProgress(){ensureOverlay();overlay.classList.remove('done');overlay.classList.add('show');document.documentElement.style.overflow='hidden';titleEl.textContent='Menyiapkan 25 soal baru…';setProgress(18,'Mengecek soal yang belum pernah muncul…');}
   function hideProgress(){overlay?.classList.remove('show','done');document.documentElement.style.overflow='';}
   function toast(msg){const el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add('hidden'),3600);}
+  function setButtonReady(button,text){if(!button)return;button.disabled=false;button.textContent=text||'↻ Generate 25 Soal Baru';button.removeAttribute('aria-busy');}
+  function announceBankUpdate(mid,info){
+    try{document.dispatchEvent(new CustomEvent('gbp:bank-updated',{detail:{moduleId:Number(mid),info:info||null}}));}catch(e){}
+  }
 
   function clearModuleProgress(mid){try{const all=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'{}')||{};delete all[String(mid)];localStorage.setItem(PROGRESS_KEY,JSON.stringify(all));}catch(e){localStorage.removeItem(PROGRESS_KEY);}try{window.GBPApp?.clearModuleProgress?.(mid);}catch(e){}}
   function moduleIdFromCurrentView(){const name=document.getElementById('moduleTag')?.textContent?.trim();if(!name)return null;const q=(window.QUESTION_BANK||[]).find(x=>x.moduleName===name);return q?Number(q.moduleId):null;}
@@ -46,7 +50,8 @@
     const api=window.GBPDatabaseQuestionBank;if(!api?.reserveNew){toast('Question generator belum siap. Refresh halaman lalu coba lagi.');return;}
     const before=api.bankInfo?.(mid)||{remaining:0,bankSize:0,maxBank:500};
     if(Number(before.remaining)<25){toast('Tersisa kurang dari 25 soal unik. Generate baru tidak tersedia untuk module ini.');return;}
-    const oldText=button?.textContent||'Generate 25 Soal Baru';if(button){button.disabled=true;button.textContent='Generating 25…';}
+    const oldText=button?.textContent||'↻ Generate 25 Soal Baru';
+    if(button){button.disabled=true;button.textContent='Generating 25…';button.setAttribute('aria-busy','true');}
     showProgress();
     try{
       setProgress(40,'Membandingkan learning objective, struktur, dan substansi…');
@@ -55,17 +60,28 @@
       const diversity=wordingDiversity(active);if(!diversity.ok)console.warn('Wording diversity warning',diversity);
       clearModuleProgress(mid);setProgress(82,'Memasang tepat 25 soal baru…');
       const after=api.bankInfo?.(mid)||before;
+
+      // Update the bank metadata immediately. Do not wait for the quiz DOM to
+      // mutate, otherwise the old disabled Generate button can remain frozen.
+      announceBankUpdate(mid,after);
+
       try{window.GBPAnalytics?.track?.('generate_questions',{moduleId:mid,questionCount:active.length||activeSlots.length,meta:{engine:'v28-honest-500',replaceAll25:true,noReload:true,bankLimit:500,bankSize:after.bankSize,remaining:after.remaining,numberOnlyChangesBlocked:true,semanticDiversity:true}});}catch(e){}
       await sleep(100);
       const app=window.GBPApp;
       if(app?.startModule){
         app.startModule(mid);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+        announceBankUpdate(mid,after);
+        setButtonReady(button,oldText);
         overlay.classList.add('done');titleEl.textContent='25 soal baru siap';setProgress(100,`${after.remaining} soal unik masih belum pernah muncul.`);await sleep(170);hideProgress();window.scrollTo({top:0,behavior:'smooth'});
         toast(`25 soal baru aktif · ${after.remaining} soal unik masih tersedia.`);
-      }else{sessionStorage.setItem('gbpAutoOpenModule',String(mid));sessionStorage.setItem('gbpGenerationToast','25 soal baru sudah aktif.');location.reload();}
+      }else{
+        setButtonReady(button,oldText);
+        sessionStorage.setItem('gbpAutoOpenModule',String(mid));sessionStorage.setItem('gbpGenerationToast','25 soal baru sudah aktif.');location.reload();
+      }
     }catch(err){
-      console.error(err);hideProgress();if(button){button.disabled=false;button.textContent=oldText;}
-      const info=api.bankInfo?.(mid);toast(info&&info.remaining<25?'Bank soal unik module ini sudah tidak punya 25 soal baru lagi.':'Belum tersedia 25 soal baru yang cukup berbeda secara substansi.');
+      console.error(err);hideProgress();setButtonReady(button,oldText);
+      const info=api.bankInfo?.(mid);announceBankUpdate(mid,info);
+      toast(info&&info.remaining<25?'Bank soal unik module ini sudah tidak punya 25 soal baru lagi.':'Belum tersedia 25 soal baru yang cukup berbeda secara substansi.');
     }
   }
 
@@ -79,5 +95,5 @@
     runGenerate(mid,button);
   },true);
 
-  window.GBPGenerateProgress={show:showProgress,set:setProgress,hide:hideProgress,wordingDiversity};
+  window.GBPGenerateProgress={show:showProgress,set:setProgress,hide:hideProgress,wordingDiversity,runGenerate};
 })();
