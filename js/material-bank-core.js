@@ -19,15 +19,41 @@
   function stripTail(s){return clean(s).replace(/[.?!:;…]+$/,'');}
   function lowerFirst(s){
     s=clean(s);if(!s)return s;
-    if(/^(USD|IDR|EUR|JPY|GBP|SGD|AUD|CNY|FX|KBMI|KPR|KKB|KTA|L\/C|LC|SKBDN|SWIFT|MT\d+|CKPN|RTO|RPO|BIA|BCP|DRP|DRC|CDD|EDD|PEP)\b/.test(s))return s;
+    if(/^(USD|IDR|EUR|JPY|GBP|SGD|AUD|CNY|FX|KBMI|KPR|KKB|KTA|L\/C|LC|SKBDN|SWIFT|MT\d+|CKPN|RTO|RPO|BIA|BCP|DRP|DRC|CDD|EDD|PEP|OTP|PIN|QRIS)\b/.test(s))return s;
     return s.charAt(0).toLocaleLowerCase('id-ID')+s.slice(1);
   }
-  function naturalQuestion(term,clue){
+  function upperFirst(s){
+    s=clean(s);if(!s)return s;
+    return s.charAt(0).toLocaleUpperCase('id-ID')+s.slice(1);
+  }
+  function statement(raw){
+    const s=stripTail(raw);
+    return s?`${upperFirst(s)}.`:'';
+  }
+
+  function serviceInformationQuestion(term,clue,index){
+    const raw=stripTail(clue),lead=statement(raw),seed=hash(`${term}|${index}`)%5;
+    const tails=[
+      'Aspek pelayanan informasi yang dimaksud adalah?',
+      'Aspek layanan apa yang paling sesuai?',
+      'Hal ini paling tepat menggambarkan aspek pelayanan apa?',
+      'Dalam pelayanan informasi produk, aspek yang diuji adalah?',
+      'Praktik tersebut berkaitan dengan aspek layanan apa?'
+    ];
+    if(seed===3)return`Dalam pelayanan informasi produk, ${lowerFirst(raw)}. Aspek yang diuji adalah?`;
+    return`${lead} ${tails[seed]}`;
+  }
+
+  function naturalQuestion(term,clue,mid,index){
     const t=norm(term),raw=stripTail(clue);
     if(t==='kbmi 1')return'Modal inti sebuah bank tepat Rp6 triliun. Bank tersebut masuk KBMI berapa?';
     if(t==='kbmi 2')return'Modal inti sebuah bank tepat Rp14 triliun. Bank tersebut masuk KBMI berapa?';
     if(t==='kbmi 3')return'Modal inti sebuah bank tepat Rp70 triliun. Bank tersebut masuk KBMI berapa?';
     if(t==='kbmi 4')return'Modal inti sebuah bank Rp70,1 triliun. Bank tersebut masuk KBMI berapa?';
+
+    // Module pelayanan informasi memakai situasi nyata sebagai pembuka. Ini juga
+    // terbawa ke NUPMK unit kompetensi yang bersumber dari module 7.
+    if(Number(mid)===7)return serviceInformationQuestion(term,clue,index);
 
     let m=raw.match(/^Jenis bank yang\s+(.+)$/i);if(m)return`Bank yang ${lowerFirst(m[1])} termasuk jenis apa?`;
     m=raw.match(/^Produk dana yang\s+(.+)$/i);if(m)return`Produk dana apa yang ${lowerFirst(m[1])}?`;
@@ -44,9 +70,13 @@
     m=raw.match(/^Simpanan yang\s+(.+)$/i);if(m)return`Simpanan yang ${lowerFirst(m[1])} disebut apa?`;
     m=raw.match(/^Bank yang\s+(.+)$/i);if(m)return`Bank yang ${lowerFirst(m[1])} disebut apa?`;
 
-    // Fallback stays direct, but sounds like a person asking a question rather
-    // than a generated definition template.
-    return`Apa istilah yang tepat untuk ${lowerFirst(raw)}?`;
+    // Fallback: selalu mulai dari fakta/situasi, bukan dari template pertanyaan.
+    // Variasi ekor mencegah satu set terasa seperti hasil copy-paste mesin.
+    const lead=statement(raw),variant=hash(`${mid}|${term}|${index}`)%4;
+    if(variant===0)return`${lead} Istilah yang sesuai adalah?`;
+    if(variant===1)return`${lead} Hal ini dikenal sebagai?`;
+    if(variant===2)return`Dalam praktik perbankan, ${lowerFirst(raw)}. Istilah yang dimaksud adalah?`;
+    return`${lead} Apa sebutan yang tepat?`;
   }
 
   function familyKey(term,clue){
@@ -109,7 +139,7 @@
         const distractors=pickDistractors(catalog,i,`${mid}:${i}:d`);
         if(distractors.length<3)return;
         const options=shuffle([term,...distractors],`${mid}:${i}:o`);
-        const question=customQ||naturalQuestion(term,clue);
+        const question=customQ||naturalQuestion(term,clue,mid,i);
         bank.push({
           id,
           day:Number(meta.day)||1,
@@ -128,7 +158,7 @@
           baseId:id,
           conceptSignature:conceptFingerprint(term,clue),
           distractorVersion:'same-family-v1',
-          wordingVersion:'natural-v1'
+          wordingVersion:'natural-v2'
         });
       });
     }
