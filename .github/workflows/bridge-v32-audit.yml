@@ -1,0 +1,59 @@
+name: BRIDGE V32 runtime audit
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/bridge-v32-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: |
+          node --check js/bridge-units.js
+          node --check js/nupmk-ui.js
+          node --check js/v23-quality-bank.js
+          node --check js/v14-db-bank.js
+          node --check js/generate-progress.js
+      - name: Runtime question-bank audit
+        run: |
+          cat > /tmp/bridge-audit.js <<'NODE'
+          const storage={};
+          global.window={QUESTION_BANK:[]};
+          global.localStorage={getItem:k=>storage[k]??null,setItem:(k,v)=>storage[k]=String(v),removeItem:k=>delete storage[k]};
+          global.sessionStorage={getItem:()=>null,setItem:()=>{},removeItem:()=>{}};
+          global.crypto=require('crypto').webcrypto;
+          global.document={addEventListener:()=>{},querySelector:()=>null,querySelectorAll:()=>[],getElementById:()=>null,referrer:'',dispatchEvent:()=>{}};
+          global.CustomEvent=function(){};
+          global.location={reload(){},pathname:'/'};
+          global.navigator={userAgent:'audit',language:'id-ID'};global.screen={width:1440,height:900};
+          global.fetch=async()=>({ok:true,text:async()=>'',json:async()=>({accepted_count:25})});
+          for(const f of ['questions','material-bank-core','material-bank-d1','material-bank-d2','material-bank-d3','material-bank-d4d5','material-bank-extra','bridge-module','bridge-category','nupmk-modules','bridge-units','v5-patch','v23-quality-bank'])require(process.cwd()+'/js/'+f+'.js');
+          const src=window.__GBP_SOURCE_BANK__||[];
+          let fail=false;
+          if(src.some(q=>Number(q.moduleId)>=1&&Number(q.moduleId)<=24)){console.error('Legacy Day 1-5 modules still in runtime');fail=true;}
+          for(let m=25;m<=45;m++){
+            if(m>=26&&m<=35||m===25||m>=36){
+              const r=src.filter(q=>Number(q.moduleId)===m);
+              console.log(`SOURCE M${m}=${r.length}`);
+              if(r.length<25||r.length>500)fail=true;
+            }
+          }
+          window.QUESTION_BANK.splice(0,window.QUESTION_BANK.length,...src);
+          require(process.cwd()+'/js/v14-db-bank.js');
+          const api=window.GBPDatabaseQuestionBank;
+          for(const m of [25,...Array.from({length:20},(_,i)=>26+i)]){
+            const r=window.QUESTION_BANK.filter(q=>Number(q.moduleId)===m);
+            const info=api.bankInfo(m);
+            console.log(`ACTIVE M${m}=${r.length} BANK=${info.bankSize}`);
+            if(r.length!==25||info.bankSize<25||info.bankSize>500)fail=true;
+          }
+          console.log(fail?'BRIDGE_V32_AUDIT=FAIL':'BRIDGE_V32_AUDIT=PASS');
+          process.exit(fail?1:0);
+          NODE
+          node /tmp/bridge-audit.js
