@@ -3,262 +3,139 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
   <meta name="theme-color" content="#2454e6" />
-  <meta name="description" content="General Banking Prep — quiz trainer 5-Day untuk persiapan General Banking Program." />
+  <meta name="description" content="General Banking Preparation — latihan soal interaktif untuk persiapan General Banking BFLP." />
   <title>General Banking Prep</title>
-  <script>
-    (()=>{
-      const BUILD='2026.08.23.2359-option-leak-v31';
-      const KEY='gbpForcedCacheBuild';
-      const REFRESH_PARAM='_gbp_build';
-      const clearRuntime=async()=>{
-        try{if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()));}}catch(e){}
-        try{if('caches' in window){const names=await caches.keys();await Promise.all(names.map(n=>caches.delete(n)));}}catch(e){}
-      };
-      const cleanRefreshParam=()=>{
-        try{
-          const u=new URL(location.href);
-          if(u.searchParams.has(REFRESH_PARAM)){
-            u.searchParams.delete(REFRESH_PARAM);
-            history.replaceState(history.state,'',`${u.pathname}${u.search}${u.hash}`);
-          }
-        }catch(e){}
-      };
-      window.__GBP_BUILD__=BUILD;
-      (async()=>{
-        let live=BUILD;
-        try{
-          const res=await fetch(`version.json?t=${Date.now()}`,{cache:'no-store'});
-          const remote=await res.json();
-          live=remote?.build||BUILD;
-        }catch(e){}
-        try{
-          const previous=localStorage.getItem(KEY);
-          if(!previous){
-            localStorage.setItem(KEY,live);
-            cleanRefreshParam();
-            return;
-          }
-          if(previous!==live){
-            await clearRuntime();
-            localStorage.setItem(KEY,live);
-            const u=new URL(location.href);
-            u.searchParams.set(REFRESH_PARAM,live);
-            location.replace(u.toString());
-            return;
-          }
-        }catch(e){}
-        cleanRefreshParam();
-      })();
-    })();
-  </script>
-  <link rel="stylesheet" href="css/style.css?v=2026.08.23.2359-option-leak-v31" />
-  <link rel="stylesheet" href="css/v5.css?v=2026.08.23.2359-option-leak-v31" />
-  <link rel="preload" href="js/questions.js?v=2026.08.23.2359-option-leak-v31" as="script" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=2026.08.24.1516-bridge-units-v32" />
 </head>
 <body>
-  <div class="app-layout">
+  <div class="app-shell">
     <aside class="sidebar" id="sidebar">
-      <div class="brand" data-view="dashboardView" role="button" tabindex="0">
-        <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 48 48"><path d="M24 5 6 15v4h36v-4L24 5Zm-13 18h5v13h-5V23Zm10 0h6v13h-6V23Zm11 0h5v13h-5V23ZM6 40h36v4H6v-4Z"/></svg>
-        </div>
-        <div class="brand-copy"><strong>GENERAL</strong><span>BANKING PREP</span></div>
+      <div class="brand-block">
+        <div class="brand-mark">GB</div>
+        <div><strong>General Banking</strong><span>Preparation</span></div>
       </div>
 
       <nav class="nav-list" aria-label="Navigasi utama">
-        <button class="nav-item active" data-view="dashboardView"><span class="nav-icon">⌂</span><span>Dashboard</span></button>
-        <button class="nav-item" data-view="quizSetupView"><span class="nav-icon">?</span><span>Quiz</span></button>
-        <button class="nav-item" data-view="reviewView"><span class="nav-icon">▤</span><span>Review</span></button>
-        <button class="nav-item" data-view="bookmarksView"><span class="nav-icon">♧</span><span>Bookmarks</span></button>
-        <button class="nav-item" data-view="statisticsView"><span class="nav-icon">▥</span><span>Statistik</span></button>
-        <button class="nav-item" data-view="settingsView"><span class="nav-icon">⚙</span><span>Settings</span></button>
+        <button class="nav-item active" data-view="dashboardView"><span>⌂</span>Dashboard</button>
+        <button class="nav-item" data-view="quizSetupView"><span>▣</span>Mulai Latihan</button>
+        <button class="nav-item" data-view="reviewView"><span>↻</span>Review</button>
+        <button class="nav-item" data-view="bookmarksView"><span>☆</span>Bookmarks</button>
+        <button class="nav-item" data-view="statisticsView"><span>▥</span>Statistik</button>
+        <button class="nav-item" data-view="settingsView"><span>⚙</span>Settings</button>
       </nav>
 
-      <div class="sidebar-spacer"></div>
       <div class="sidebar-study-card">
-        <div class="mini-badge">5-DAY CHALLENGE</div>
-        <strong>24 Modul · V5 Generator Edition</strong>
-        <p><span id="sideQuestionCount">432</span> soal menantang. Progress tersimpan otomatis.</p>
-        <button class="sidebar-cta" id="sideQuickBtn">Mulai Hard Drill</button>
+        <span>Study mode</span>
+        <strong>Daily consistency wins.</strong>
+        <small>Fokus ke konsep yang belum stabil.</small>
       </div>
-      <div class="sidebar-help"><span class="help-dot">?</span><div><strong>Tips</strong><small>Latih titik lemah setelah sesi.</small></div></div>
     </aside>
 
-    <div class="app-main">
+    <div class="main-shell">
       <header class="topbar">
-        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Buka menu">☰</button>
-        <div class="search-wrap">
-          <span class="search-icon">⌕</span>
-          <input id="globalSearch" type="search" placeholder="Cari modul, topik, atau soal..." autocomplete="off" />
-          <kbd>⌘ K</kbd>
-          <div id="searchResults" class="search-results hidden"></div>
+        <div class="topbar-left">
+          <button class="icon-btn menu-btn" id="menuBtn" aria-label="Buka menu">☰</button>
+          <div class="breadcrumb"><span id="breadcrumbDay">Dashboard</span><b>/</b><strong id="breadcrumbModule">General Banking Prep</strong></div>
         </div>
-        <div class="top-actions">
-          <div class="streak-pill" title="Hari belajar beruntun"><span>🔥</span><strong id="streakCount">1</strong><small>Hari Beruntun</small></div>
-          <button class="icon-btn" id="themeToggle" aria-label="Ubah tema">☾</button>
-          <div class="profile-chip"><div class="avatar">GB</div><div class="profile-copy"><strong>General Banking</strong><small>5-Day Prep</small></div></div>
+        <div class="topbar-actions">
+          <button class="icon-btn" id="themeBtn" aria-label="Ganti tema">◐</button>
+          <div class="profile-chip"><div class="avatar">A</div><div><strong>Avicenna</strong><span>General Banking</span></div></div>
         </div>
       </header>
 
       <main class="content">
-        <!-- DASHBOARD -->
         <section id="dashboardView" class="view active">
           <section class="hero-card">
             <div class="hero-copy">
-              <span class="hero-kicker">5-Day General Banking Preparation</span>
-              <h1 id="heroTitle">General Banking · Day 1</h1>
-              <p id="heroDescription">Latihan berbasis kasus dengan distraktor yang sengaja dibuat rapat. Fokusnya memahami konsep, bukan menebak pola jawaban.</p>
+              <span class="hero-kicker">5-DAY GENERAL BANKING PROGRAM</span>
+              <h1 id="heroTitle">Kuasai General Banking, satu modul sekali jalan.</h1>
+              <p id="heroDescription">Latihan soal, evaluasi otomatis, review, dan statistik kemajuan dalam satu dashboard.</p>
               <div class="hero-actions">
-                <button class="btn btn-white" id="continueLearningBtn">▶ Lanjutkan Belajar</button>
-                <button class="btn btn-glass" id="heroExamBtn">Simulasi Ujian</button>
+                <button class="btn btn-primary" id="heroExamBtn">Mulai Simulasi</button>
+                <button class="btn btn-ghost" id="allModulesBtn">Lihat Semua Modul</button>
               </div>
             </div>
-            <div class="hero-progress-card">
-              <div>
-                <h3>Progress Hari Ini</h3>
-                <div class="donut-wrap">
-                  <div class="donut" id="todayDonut"><span id="todayProgress">0%</span><small>Selesai</small></div>
-                </div>
-              </div>
-              <div class="hero-metrics">
-                <div class="hero-metric"><span class="metric-icon green">↗</span><div><strong id="heroStreak">1</strong><small>Hari Beruntun</small></div></div>
-                <div class="hero-metric"><span class="metric-icon blue">▤</span><div><strong id="heroTotalQuestions">432</strong><small>Total Soal</small></div></div>
-                <div class="hero-metric"><span class="metric-icon purple">◎</span><div><strong id="heroAnswered">0</strong><small>Soal Dikerjakan</small></div></div>
-              </div>
-            </div>
+            <div class="hero-score"><span>Overall Accuracy</span><strong id="overallAccuracy">0%</strong><small id="overallAnswered">0 soal dikerjakan</small></div>
+          </section>
+
+          <section class="stats-grid">
+            <article class="stat-card"><span>Soal Dijawab</span><strong id="statAnswered">0</strong><small>Total attempt</small></article>
+            <article class="stat-card"><span>Jawaban Benar</span><strong id="statCorrect">0</strong><small>Across modules</small></article>
+            <article class="stat-card"><span>Streak</span><strong id="statStreak">0 hari</strong><small>Keep it going</small></article>
+            <article class="stat-card"><span>Weakness</span><strong id="statWeakness">0</strong><small>Perlu direview</small></article>
           </section>
 
           <section class="section-block">
-            <div class="section-title-row"><div><h2 id="moduleSectionTitle">Modul Day 1</h2><p>Pilih hari dan modul untuk latihan yang lebih terarah.</p></div><button class="text-link" id="allModulesBtn">Atur Quiz →</button></div>
-            <div id="dayTabs" class="day-tabs" aria-label="Pilih hari"></div>
-            <div id="dashboardModuleGrid" class="module-showcase"></div>
+            <div class="section-title-row"><div><h2>Pilih Modul</h2><p id="moduleSectionTitle">Modul General Banking</p></div></div>
+            <div class="day-tabs" id="dayTabs"></div>
+            <div class="module-display-grid" id="dashboardModuleGrid"></div>
           </section>
 
           <section class="section-block">
-            <div class="section-title-row compact"><h2>Aksi Cepat</h2></div>
+            <div class="section-title-row"><div><h2>Quick Actions</h2><p>Langsung lanjut ke area yang paling relevan.</p></div></div>
             <div class="quick-actions">
-              <button class="quick-card" id="practiceQuick"><span class="quick-icon blue">◎</span><div><strong>Practice Mode</strong><small>Feedback & pembahasan langsung setelah jawab.</small></div><b>›</b></button>
-              <button class="quick-card" id="examQuick"><span class="quick-icon purple">▣</span><div><strong>Exam Mode</strong><small>Simulasi tanpa feedback sampai sesi selesai.</small></div><b>›</b></button>
-              <button class="quick-card" id="quickDrillBtn"><span class="quick-icon green">ϟ</span><div><strong>Quick Drill 10 Soal</strong><small>Hard-biased: Expert + Challenge dari Day yang dipilih.</small></div><b>›</b></button>
-              <button class="quick-card" id="weaknessDrillBtn"><span class="quick-icon red">◎</span><div><strong>Weakness Drill</strong><small>Fokus pada soal yang pernah salah.</small></div><b>›</b></button>
-            </div>
-          </section>
-
-          <section class="section-block">
-            <div class="section-title-row compact"><h2>Ringkasan Performa</h2><button class="text-link" data-view="statisticsView">Lihat statistik →</button></div>
-            <div class="performance-summary">
-              <article class="summary-card accuracy-card">
-                <div class="card-head"><span>Akurasi Kamu</span><span class="info-dot">i</span></div>
-                <div class="accuracy-main"><strong id="dashboardAccuracy">0%</strong><span id="accuracyDelta">Mulai latihan untuk membangun data.</span></div>
-                <div class="thin-progress"><span id="accuracyProgress"></span></div>
-                <div id="miniTrend" class="mini-chart" aria-hidden="true"></div>
-              </article>
-              <article class="summary-card">
-                <div class="card-head"><span>Soal Difavoritkan</span><span class="info-dot">i</span></div>
-                <div class="big-stat"><strong id="bookmarkCount">0</strong><span>Soal</span></div>
-                <button class="text-link left" data-view="bookmarksView">Lihat semua bookmark →</button>
-                <div class="watermark-icon">♧</div>
-              </article>
-              <article class="summary-card weakest-card">
-                <div class="card-head"><span>Modul Terlemah</span><span class="info-dot">i</span></div>
-                <strong id="weakestModule">Belum ada data</strong>
-                <p id="weakestDetail">Kerjakan beberapa soal untuk mendapatkan rekomendasi.</p>
-                <button class="text-link left" id="weakestStartBtn">Mulai latihan →</button>
-                <div class="watermark-icon teal">⚖</div>
-              </article>
+              <button class="quick-card" id="weaknessDrillBtn"><strong>Weakness Drill</strong><span>Latih soal yang paling sering salah →</span></button>
+              <button class="quick-card" data-view="bookmarksView"><strong>Bookmarks</strong><span>Buka soal yang ditandai →</span></button>
+              <button class="quick-card" data-view="reviewView"><strong>Review</strong><span>Pelajari hasil sesi terakhir →</span></button>
             </div>
           </section>
         </section>
 
-        <!-- QUIZ SETUP -->
         <section id="quizSetupView" class="view">
-          <div class="page-heading"><div><span class="eyebrow">Quiz Setup</span><h1>Atur Sesi Latihan</h1><p>Pilih modul, mode, jumlah soal, lalu mulai.</p></div></div>
+          <div class="page-heading"><div><span class="eyebrow">Quiz Setup</span><h1>Atur Latihan</h1><p>Pilih modul, jumlah soal, dan mode latihan.</p></div></div>
           <div class="setup-layout">
             <section class="surface setup-main">
-              <div class="section-title-row"><div><h2>Pilih Materi</h2><p>Bisa satu modul atau kombinasi beberapa modul.</p></div><button id="selectAllBtn" class="text-link">Pilih semua</button></div>
-              <div class="setup-day-row"><span class="field-label">Filter Hari</span><div id="setupDayTabs" class="day-tabs compact-tabs"></div></div>
-              <div id="moduleGrid" class="setup-module-grid"></div>
-            </section>
-            <aside class="surface setup-side">
-              <h2>Pengaturan Sesi</h2>
-              <label class="field-label">Mode</label>
-              <div class="segmented" id="modeSelector"><button class="segment active" data-mode="practice">Practice</button><button class="segment" data-mode="exam">Exam</button></div>
-              <p class="field-help" id="modeHelp">Feedback + pembahasan muncul langsung setelah menjawab.</p>
-              <label class="field-label" for="questionCount">Jumlah soal</label>
-              <select id="questionCount" class="select-input"><option value="10">10 soal</option><option value="25" selected>25 soal</option><option value="all">Semua soal terpilih</option></select>
-              <label class="field-label">Randomisasi</label>
-              <label class="toggle-row"><span>Acak urutan soal</span><input type="checkbox" id="shuffleQuestions"><i></i></label>
-              <label class="toggle-row"><span>Acak pilihan jawaban</span><input type="checkbox" id="shuffleOptions" checked><i></i></label>
-              <button id="startQuizBtn" class="btn btn-primary full">Mulai Latihan <span>→</span></button>
-            </aside>
-          </div>
-        </section>
-
-        <!-- QUIZ -->
-        <section id="quizView" class="view quiz-page">
-          <div class="breadcrumb"><button data-view="dashboardView" id="breadcrumbDay">Day 1</button><span>›</span><button data-view="quizSetupView">Quiz</button><span>›</span><strong id="breadcrumbModule">Semua Modul</strong></div>
-          <section class="quiz-status surface">
-            <div><strong id="quizModeTitle">Practice Mode</strong><small id="quizModeSubtitle">Belajar santai tanpa tekanan</small></div>
-            <div class="quiz-progress-block"><div class="status-label"><strong id="questionCounter">Soal 1 dari 10</strong><span id="progressPercent">0%</span></div><div class="progress-track"><span id="progressBar"></span></div></div>
-            <div class="status-metric"><span class="clock-icon">◷</span><div><small id="timeLabel">Waktu</small><strong id="timerText">00:00</strong></div></div>
-            <div class="status-metric"><div><small>Skor Sementara</small><strong class="score-live" id="liveScore">0%</strong><span id="liveCorrect">0 benar</span></div></div>
-          </section>
-
-          <div class="quiz-layout">
-            <article class="surface question-panel">
-              <div class="question-heading-row"><span class="question-badge" id="questionBadge">Soal 1</span><button id="markQuestionBtn" class="inline-action">♧ Tandai soal</button></div>
-              <h2 id="questionText"></h2>
-              <div id="optionsList" class="answer-list"></div>
-              <div id="feedbackBox" class="feedback-panel hidden"></div>
-              <div class="explanation-accordion">
-                <button id="explanationToggle"><span>▤</span><div><strong>Catatan & Pembahasan</strong><small id="explanationHint">Buka setelah menjawab untuk melihat penjelasan dan materi terkait.</small></div><b>⌄</b></button>
-                <div id="notePanel" class="note-panel hidden"><textarea id="questionNote" placeholder="Tulis catatan singkat untuk soal ini..."></textarea><div class="note-actions"><small>Catatan tersimpan lokal di browser.</small><button id="saveNoteBtn" class="btn btn-soft">Simpan Catatan</button></div></div>
+              <div class="field-group"><label>Modul</label><div id="modulePicker" class="module-picker"></div></div>
+              <div class="setup-grid-2">
+                <div class="field-group"><label for="questionCount">Jumlah Soal</label><select id="questionCount" class="select-input"><option value="10">10 soal</option><option value="25" selected>25 soal</option><option value="all">Semua soal terpilih</option></select></div>
+                <div class="field-group"><label for="quizMode">Mode</label><select id="quizMode" class="select-input"><option value="practice">Practice</option><option value="exam">Exam</option></select></div>
               </div>
-            </article>
-
-            <aside class="quiz-side-column">
-              <section class="surface module-info-card"><div class="module-info-head"><span class="module-icon" id="quizModuleIcon">🏦</span><div><strong id="moduleTag">Semua Modul</strong><small id="modulePosition">Day 1</small></div></div><hr><small>Tingkat Kesulitan</small><div class="difficulty-row"><span id="difficultyDots"></span><strong id="difficultyTag">Mudah</strong></div><div class="two-actions"><button id="bookmarkBtn" class="btn btn-soft">♧ Bookmark</button><button id="openNoteBtn" class="btn btn-soft">▤ Catatan</button></div></section>
-              <section class="surface navigator-card"><h3>Navigasi Soal</h3><div class="navigator-legend"><span><i class="done"></i>Dijawab</span><span><i class="current"></i>Saat ini</span><span><i></i>Belum</span><span><i class="flagged"></i>Ditandai</span></div><div id="questionNavigator" class="question-navigator"></div><div class="tip-box"><span>💡</span><div><strong>Tip</strong><p>Kalau ragu, tandai dulu. Review semua soal yang ditandai sebelum selesai.</p></div></div></section>
-            </aside>
+              <button class="btn btn-primary btn-wide" id="startQuizBtn">Mulai Quiz</button>
+            </section>
+            <aside class="surface setup-side"><span class="eyebrow">Tips</span><h2>Gunakan Practice untuk belajar.</h2><p>Jawaban langsung dibahas. Exam Mode cocok untuk simulasi tanpa feedback instan.</p></aside>
           </div>
-
-          <div class="quiz-bottom-nav"><button id="prevBtn" class="btn btn-outline">← Sebelumnya</button><button id="skipBtn" class="btn btn-outline">Lewati</button><button id="nextBtn" class="btn btn-primary">Selanjutnya →</button></div>
         </section>
 
-        <!-- RESULT -->
+        <section id="quizView" class="view quiz-view">
+          <div class="quiz-topline">
+            <div><span id="modulePosition" class="eyebrow">Module</span><h1 id="quizModeTitle">Practice Mode</h1></div>
+            <button class="btn btn-soft" id="exitQuizBtn">Keluar</button>
+          </div>
+          <div class="quiz-progress"><div id="progressFill"></div></div>
+          <div class="quiz-layout">
+            <section class="surface question-panel">
+              <div class="quiz-status"><span id="questionCounter">Soal 1 / 10</span><div class="status-metric"><small>Waktu</small><strong id="timerText">00:00</strong></div></div>
+              <div class="module-info-card"><span id="moduleTag">Module</span><small id="sourceTag">Source</small></div>
+              <div class="question-top-actions"><button class="btn btn-soft" id="prevBtnTop">← Sebelumnya</button><button class="btn btn-soft" id="skipBtnTop">Lewati</button><button class="btn btn-primary" id="nextBtnTop">Selanjutnya →</button></div>
+              <h2 id="questionText">Pertanyaan</h2>
+              <div id="optionsList" class="options-list"></div>
+              <div id="explanationBox" class="explanation-box hidden"><span>Penjelasan</span><p id="explanationText"></p></div>
+              <div class="question-actions"><button class="btn btn-soft" id="prevBtn">← Sebelumnya</button><div><button class="btn btn-soft" id="bookmarkBtn">☆ Tandai</button><button class="btn btn-soft" id="skipBtn">Lewati</button><button class="btn btn-primary" id="nextBtn">Selanjutnya →</button></div></div>
+            </section>
+            <aside class="surface navigator-panel"><div class="section-title-row compact"><h2>Navigasi Soal</h2><span id="answeredCount">0 dijawab</span></div><div id="questionNav" class="question-nav"></div><div class="legend"><span><i class="dot current"></i>Aktif</span><span><i class="dot answered"></i>Dijawab</span><span><i class="dot bookmarked"></i>Ditandai</span></div></aside>
+          </div>
+        </section>
+
         <section id="resultView" class="view">
-          <section class="result-hero">
-            <div class="result-illustration">✓</div>
-            <div class="result-copy"><span>SELESAI</span><h1>Hasil Quiz</h1><p id="resultMessage">Sesi selesai. Lihat detail performa dan fokus latihan berikutnya.</p><div class="result-date" id="resultDate"></div></div>
-            <div class="result-score-block"><small>Skor Akhir</small><strong id="resultScore">0<span>/100</span></strong><div id="resultBadge" class="result-badge">Mulai lagi</div></div>
-            <div class="result-donut" id="resultDonut"><span id="resultAccuracy">0%</span><small>Akurasi</small></div>
-          </section>
-          <div class="result-stats"><article><span class="stat-round green">✓</span><div><small>Benar</small><strong id="resultCorrect">0</strong></div></article><article><span class="stat-round red">×</span><div><small>Salah</small><strong id="resultWrong">0</strong></div></article><article><span class="stat-round orange">○</span><div><small>Dilewati</small><strong id="resultSkipped">0</strong></div></article><article><span class="stat-round purple">◷</span><div><small>Waktu Pengerjaan</small><strong id="resultTime">0m 0d</strong></div></article></div>
-          <div class="results-grid">
-            <section class="surface result-review-card"><div class="section-title-row compact"><h2>Review Jawaban</h2><button class="text-link" id="openFullReview">Lihat Semua Review</button></div><div id="reviewPreview" class="review-preview"></div></section>
-            <section class="surface module-result-card"><div class="section-title-row compact"><h2>Performa per Modul</h2></div><div id="resultModulePerformance"></div></section>
+          <div class="result-shell">
+            <section class="surface result-hero"><span class="eyebrow">Quiz Complete</span><h1 id="resultHeadline">Selesai.</h1><div class="result-score-ring"><strong id="resultScore">0%</strong><span>Akurasi</span></div><div class="result-summary-grid"><div><span>Benar</span><strong id="resultCorrect">0</strong></div><div><span>Salah</span><strong id="resultWrong">0</strong></div><div><span>Dilewati</span><strong id="resultSkipped">0</strong></div><div><span>Durasi</span><strong id="resultTime">00:00</strong></div></div><div class="hero-actions center"><button class="btn btn-primary" id="reviewResultBtn">Review Jawaban</button><button class="btn btn-ghost" id="backDashboardBtn">Dashboard</button></div></section>
           </div>
-          <section class="section-block"><div class="section-title-row compact"><h2>Insight Performa</h2></div><div id="resultInsights" class="insight-grid"></div></section>
-          <section class="section-block"><div class="section-title-row compact"><h2>Rekomendasi Belajar Berikutnya</h2></div><div class="recommendations"><button class="recommend blue" id="retryWrongBtn"><span>↻</span><div><strong>Ulangi Soal Salah</strong><small>Perkuat konsep yang belum tepat di sesi ini.</small></div><b>→</b></button><button class="recommend orange" id="resultWeaknessBtn"><span>◎</span><div><strong>Weakness Drill</strong><small>Latihan dari akumulasi soal yang sering salah.</small></div><b>→</b></button><button class="recommend green" id="backHomeBtn"><span>⚑</span><div><strong>Kembali ke Dashboard</strong><small>Lihat progress dan pilih sesi berikutnya.</small></div><b>→</b></button></div></section>
         </section>
 
-        <!-- REVIEW -->
         <section id="reviewView" class="view">
           <div class="page-heading"><div><span class="eyebrow">Review</span><h1>Riwayat & Jawaban</h1><p>Pelajari kembali soal dari sesi terakhir dan riwayat latihan.</p></div></div>
           <section class="surface"><div class="section-title-row"><div><h2>Review Sesi Terakhir</h2><p id="reviewLastMeta">Belum ada sesi.</p></div><select id="reviewFilter" class="mini-select"><option value="all">Semua</option><option value="wrong">Salah</option><option value="correct">Benar</option><option value="skipped">Dilewati</option></select></div><div id="reviewList" class="full-review-list"></div></section>
         </section>
 
-        <!-- BOOKMARKS -->
         <section id="bookmarksView" class="view">
           <div class="page-heading"><div><span class="eyebrow">Bookmarks</span><h1>Soal Ditandai</h1><p>Kumpulan soal yang ingin kamu buka lagi nanti.</p></div></div>
           <section class="surface"><div id="bookmarksList" class="bookmark-list"></div></section>
         </section>
 
-        <!-- STATISTICS -->
         <section id="statisticsView" class="view">
           <div class="page-heading"><div><span class="eyebrow">Statistik</span><h1>Performa Belajar</h1><p>Lihat akurasi, intensitas latihan, dan kelemahan per modul.</p></div></div>
           <div id="statisticsCards" class="stat-big-grid"></div>
@@ -266,7 +143,6 @@
           <section class="surface history-surface"><div class="section-title-row compact"><h2>Riwayat Sesi</h2></div><div id="historyList" class="history-list"></div></section>
         </section>
 
-        <!-- SETTINGS -->
         <section id="settingsView" class="view">
           <div class="page-heading"><div><span class="eyebrow">Settings</span><h1>Pengaturan</h1><p>Preferensi disimpan di perangkat ini.</p></div></div>
           <div class="settings-grid">
@@ -282,24 +158,25 @@
 
   <div id="toast" class="toast hidden"></div>
   <div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
-  <script defer src="js/cache-control.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/questions.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/material-bank-core.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/material-bank-d1.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/material-bank-d2.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/material-bank-d3.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/material-bank-d4d5.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/material-bank-extra.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/bridge-module.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/bridge-category.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/nupmk-modules.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/v5-patch.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/v23-quality-bank.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/generate-progress.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/v14-db-bank.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/v16-dedupe.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/app.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/v10-usage-watch.js?v=2026.08.23.2359-option-leak-v31"></script>
-  <script defer src="js/nupmk-ui.js?v=2026.08.23.2359-option-leak-v31"></script>
+  <script defer src="js/cache-control.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/questions.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/material-bank-core.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/material-bank-d1.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/material-bank-d2.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/material-bank-d3.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/material-bank-d4d5.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/material-bank-extra.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/bridge-module.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/bridge-category.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/nupmk-modules.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/bridge-units.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/v5-patch.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/v23-quality-bank.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/generate-progress.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/v14-db-bank.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/v16-dedupe.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/app.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/v10-usage-watch.js?v=2026.08.24.1516-bridge-units-v32"></script>
+  <script defer src="js/nupmk-ui.js?v=2026.08.24.1516-bridge-units-v32"></script>
 </body>
 </html>
