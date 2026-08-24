@@ -2,7 +2,10 @@ name: BRIDGE V32 runtime audit
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/bridge-v32-audit.yml']
+    paths:
+      - '.github/workflows/bridge-v32-audit.yml'
+      - 'js/bridge-units.js'
+      - 'js/nupmk-ui.js'
 permissions:
   contents: write
 jobs:
