@@ -370,6 +370,14 @@
     module.sources = {...module.sources, ...(deep.sources || {})};
   });
 
+  const expertContent = window.GBPLearningExpert || {};
+  modules.forEach(module => {
+    const expert = expertContent[module.code] || {};
+    module.expert = expert.chapters || [];
+    module.expertNote = expert.note || '';
+    module.glossary = [...module.glossary, ...(expert.glossary || [])];
+  });
+
   const root = document.getElementById('learningModuleRoot');
   if (!root) return;
 
@@ -381,10 +389,11 @@
     const needle = query.trim().toLowerCase();
     const filtered = modules.filter(m => !needle || [
       m.code,m.title,m.summary,...m.tags,...m.glossary.flat(),
-      ...(m.core || []).flat(2), ...(m.flow || []).flat(), ...(m.cases || []).flat()
+      ...(m.core || []).flat(2), ...(m.flow || []).flat(), ...(m.cases || []).flat(),
+      ...(m.expert || []).flatMap(chapter => [chapter.title, chapter.lead, ...chapter.rows.flat()])
     ].join(' ').toLowerCase().includes(needle));
     root.innerHTML = `<div class="lm-shell">
-      <section class="lm-hero"><div class="lm-hero-row"><div class="lm-hero-copy"><span class="lm-kicker">◫ Learning Module · General Banking Level 4</span><h1>10 Unit Kompetensi</h1><p>Materi belajar mendalam dari dua bahan sertifikasi: core materi, alur proses, 160+ istilah operasional, checklist penguasaan, decision rules, mini case, dan prediksi pertanyaan.</p><div class="lm-stats"><span><b>50</b> core topics</span><span><b>90+</b> langkah proses</span><span><b>20</b> mini case</span></div></div><div class="lm-count"><strong>10</strong><span>sub-module kompetensi</span></div></div></section>
+      <section class="lm-hero"><div class="lm-hero-row"><div class="lm-hero-copy"><span class="lm-kicker">◫ Learning Module · General Banking Level 4</span><h1>10 Unit Kompetensi</h1><p>Materi belajar sampai level teknis: klasifikasi produk/transaksi, parameter waktu dan nominal, formulir, jurnal, kode SWIFT, standar, pasal hukum, alur kontrol, mini case, dan prediksi pertanyaan.</p><div class="lm-stats"><span><b>200</b> technical references</span><span><b>220+</b> istilah</span><span><b>90+</b> langkah proses</span><span><b>20</b> mini case</span></div></div><div class="lm-count"><strong>10</strong><span>sub-module kompetensi</span></div></div></section>
       <div class="lm-toolbar"><label class="lm-search"><span>⌕</span><input id="lmSearch" type="search" placeholder="Cari unit, istilah, atau topik…" value="${esc(query)}" autocomplete="off"></label><div class="lm-source-summary">Sumber utama: 2 PDF · 1.626 halaman</div></div>
       <div class="lm-grid">${filtered.length ? filtered.map((m,i) => `<button class="lm-card" data-lm-open="${modules.indexOf(m)}"><span class="lm-card-num">${String(modules.indexOf(m)+1).padStart(2,'0')}</span><span><small class="lm-card-code">${esc(m.code)}</small><h2>${esc(m.title)}</h2><p>${esc(m.summary)}</p><span class="lm-card-tags">${m.tags.map(t=>`<span>${esc(t)}</span>`).join('')}</span></span><span class="lm-card-arrow">›</span></button>`).join('') : '<div class="lm-empty">Tidak ada materi yang cocok dengan pencarian.</div>'}</div>
     </div>`;
@@ -399,8 +408,9 @@
     root.innerHTML = `<article class="lm-detail">
       <div class="lm-breadcrumb"><button id="lmBackTop">Learning Module</button><span>›</span><span>Unit ${index+1}</span></div>
       <header class="lm-detail-hero"><div class="lm-detail-icon">${m.icon}</div><div><span class="lm-unit-label">Unit Kompetensi ${String(index+1).padStart(2,'0')}</span><h1>${esc(m.title)}</h1><p>${esc(m.summary)}</p></div><span class="lm-detail-code">${esc(m.code)}</span></header>
-      <nav class="lm-jumpbar" aria-label="Navigasi isi unit"><button data-jump="lmCore">Core Materi</button><button data-jump="lmFlow">Alur Proses</button><button data-jump="lmGlossary">Kamus / Glossary</button><button data-jump="lmMastery">Wajib Dikuasai</button><button data-jump="lmCritical">Titik Kritis</button><button data-jump="lmCases">Mini Case</button><button data-jump="lmQuestions">Prediksi Pertanyaan</button></nav>
+      <nav class="lm-jumpbar" aria-label="Navigasi isi unit"><button data-jump="lmCore">Core Materi</button><button data-jump="lmExpert">Technical Deep Dive</button><button data-jump="lmFlow">Alur Proses</button><button data-jump="lmGlossary">Kamus / Glossary</button><button data-jump="lmMastery">Wajib Dikuasai</button><button data-jump="lmCritical">Titik Kritis</button><button data-jump="lmCases">Mini Case</button><button data-jump="lmQuestions">Prediksi Pertanyaan</button></nav>
       <section class="lm-section" id="lmCore">${sectionHead('◆','Core Materi','Fondasi konsep dan hubungan antar-topik yang harus dipahami sebelum menghafal prosedur.')}<div class="lm-core-grid">${m.core.map((item,i)=>`<article class="lm-core-card"><span class="lm-core-no">${String(i+1).padStart(2,'0')}</span><h3>${esc(item[0])}</h3><p>${esc(item[1])}</p><ul>${item[2].map(point=>`<li>${esc(point)}</li>`).join('')}</ul></article>`).join('')}</div>${sourceNote(m.sources.core)}</section>
+      <section class="lm-section lm-expert-section" id="lmExpert">${sectionHead('⌁','Technical Deep Dive','Detail teknis, angka, jenis, dokumen, kode, standar, dan rujukan yang membedakan jawaban umum dari jawaban kompeten.')}<div class="lm-expert-alert"><b>Catatan penggunaan</b><span>${esc(m.expertNote)}</span></div><div class="lm-expert-list">${m.expert.map((chapter,i)=>`<article class="lm-expert-chapter"><header><span>Deep Dive ${String(i+1).padStart(2,'0')}</span><h3>${esc(chapter.title)}</h3><p>${esc(chapter.lead)}</p></header><div class="lm-expert-table-wrap"><table class="lm-expert-table"><thead><tr><th>Istilah / Referensi</th><th>Detail Teknis</th><th>Implikasi Operasional / Ujian</th></tr></thead><tbody>${chapter.rows.map(row=>`<tr><td>${esc(row[0])}</td><td>${esc(row[1])}</td><td>${esc(row[2])}</td></tr>`).join('')}</tbody></table></div>${sourceNote(chapter.source)}</article>`).join('')}</div></section>
       <section class="lm-section" id="lmFlow">${sectionHead('→','Alur Proses End-to-End','Urutan kerja, tujuan setiap langkah, dan kontrol yang tidak boleh dilewati.')}<div class="lm-flow">${m.flow.map(item=>`<article class="lm-flow-step"><span class="lm-flow-number">${esc(item[0])}</span><div class="lm-flow-body"><h3>${esc(item[1])}</h3><p>${esc(item[2])}</p><div class="lm-flow-control"><b>Kontrol:</b> ${esc(item[3])}</div></div></article>`).join('')}</div>${sourceNote(m.sources.flow)}</section>
       <section class="lm-section" id="lmGlossary">${sectionHead('A','Kamus / Glossary','Istilah inti yang perlu dipahami, bukan sekadar dihafal.')}<div class="lm-glossary-wrap"><table class="lm-glossary"><thead><tr><th>Istilah</th><th>Makna operasional</th><th>Mengapa penting</th></tr></thead><tbody>${m.glossary.map(row=>`<tr><td>${esc(row[0])}</td><td>${esc(row[1])}</td><td>${esc(row[2])}</td></tr>`).join('')}</tbody></table></div>${sourceNote(m.sources.glossary)}</section>
       <section class="lm-section" id="lmMastery">${sectionHead('✓','Apa yang Wajib Dikuasai','Checklist kemampuan sebelum masuk ke latihan soal.')}<div class="lm-mastery">${m.mastery.map(item=>`<div class="lm-master-item"><span>✓</span><div>${esc(item)}</div></div>`).join('')}</div>${sourceNote(m.sources.mastery)}</section>
