@@ -4,6 +4,18 @@
   const SESSION_KEY='gbpAnalyticsSessionV1';
   const clean=text=>String(text||'').replace(/\s+/g,' ').trim();
 
+  // Manual navigation compatibility guard. app.js historically advances Exam Mode
+  // 120 ms after an answer. Suppress only that exact nextQuestion timer; all other
+  // timers (toast, progress, analytics, etc.) continue to use the native scheduler.
+  if(!window.__GBP_MANUAL_NEXT_V33__){
+    const nativeSetTimeout=window.setTimeout.bind(window);
+    window.setTimeout=function(handler,delay,...args){
+      if(Number(delay)===120&&typeof handler==='function'&&handler.name==='nextQuestion')return 0;
+      return nativeSetTimeout(handler,delay,...args);
+    };
+    window.__GBP_MANUAL_NEXT_V33__=true;
+  }
+
   // V28 is the source of truth. This file only keeps analytics/UI helpers.
   const sessionId=(()=>{let x=localStorage.getItem(SESSION_KEY);if(!x){x=`${Date.now().toString(36)}-${crypto.getRandomValues(new Uint32Array(2)).join('-')}`;localStorage.setItem(SESSION_KEY,x)}return x})();
   let analyticsCtx={page:'dashboardView',moduleId:null,day:null};
@@ -19,6 +31,33 @@
   window.GBPAnalytics={track,setContext:(next={})=>{analyticsCtx={...analyticsCtx,...next};track('view_change',next)},sessionId};
 
   window.GBPQuestionBank=window.GBPQuestionBank||{generate:mid=>window.GBPDatabaseQuestionBank?.reserveNew?.(mid),bankInfo:mid=>window.GBPDatabaseQuestionBank?.bankInfo?.(mid)||{active:25,database:true},BANK_SIZE:0,ACTIVE_LIMIT:25};
+
+  function ensureQuizNavStyle(){
+    if(document.getElementById('gbpQuizTopNavStyle'))return;
+    const style=document.createElement('style');style.id='gbpQuizTopNavStyle';
+    style.textContent=`
+      #quizView .question-panel>.quiz-bottom-nav.quiz-top-nav{position:sticky;top:10px;z-index:20;display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:4px 0 18px;padding:10px;border:1px solid rgba(148,163,184,.28);border-radius:12px;background:color-mix(in srgb,var(--surface,#fff) 94%,transparent);backdrop-filter:blur(10px);box-shadow:0 8px 22px rgba(15,23,42,.07)}
+      #quizView .quiz-top-nav .btn{min-width:118px;margin:0}
+      #quizView .quiz-top-nav #nextBtn{order:1}
+      #quizView .quiz-top-nav #skipBtn{order:2}
+      #quizView .quiz-top-nav #prevBtn{order:3}
+      @media(max-width:700px){#quizView .question-panel>.quiz-bottom-nav.quiz-top-nav{top:6px;gap:6px;padding:8px}#quizView .quiz-top-nav .btn{flex:1;min-width:0;padding-left:8px;padding-right:8px;font-size:12px}}
+    `;
+    document.head.appendChild(style);
+  }
+  function moveQuizNavigation(){
+    const quiz=document.getElementById('quizView');if(!quiz)return;
+    const panel=quiz.querySelector('.question-panel'),question=document.getElementById('questionText'),nav=quiz.querySelector('.quiz-bottom-nav');
+    if(!panel||!question||!nav)return;
+    ensureQuizNavStyle();
+    nav.classList.add('quiz-top-nav');
+    if(nav.parentElement!==panel||nav.nextElementSibling!==question)panel.insertBefore(nav,question);
+    const prev=document.getElementById('prevBtn'),skip=document.getElementById('skipBtn'),next=document.getElementById('nextBtn');
+    if(prev)prev.textContent='← Kembali';
+    if(skip)skip.textContent='Lewati';
+    // Keep app.js dynamic “Selesai →” label on the last question; otherwise normalize.
+    if(next&&next.textContent.trim()!=='Selesai →')next.textContent='Selanjutnya →';
+  }
 
   function cleanUI(){
     const bridge=document.getElementById('bridgeLockedNav');if(bridge)bridge.style.display='none';
@@ -52,7 +91,7 @@
   }
 
   let scheduled=false,forceNext=false;
-  function refreshSoon(force=false){forceNext=forceNext||force;if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;const f=forceNext;forceNext=false;cleanUI();injectQuestionType();injectQuizGenerator(f);});}
+  function refreshSoon(force=false){forceNext=forceNext||force;if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;const f=forceNext;forceNext=false;cleanUI();moveQuizNavigation();injectQuestionType();injectQuizGenerator(f);});}
   document.addEventListener('DOMContentLoaded',()=>{
     refreshSoon(true);
     const tag=document.getElementById('moduleTag');if(tag)new MutationObserver(()=>refreshSoon()).observe(tag,{childList:true,characterData:true,subtree:true});
