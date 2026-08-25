@@ -47,11 +47,16 @@
   }
   function moveQuizNavigation(){
     const quiz=document.getElementById('quizView');if(!quiz)return;
-    const panel=quiz.querySelector('.question-panel'),question=document.getElementById('questionText'),nav=quiz.querySelector('.quiz-bottom-nav');
-    if(!panel||!question||!nav)return;
+    const panel=quiz.querySelector('.question-panel'),question=document.getElementById('questionText'),nav=quiz.querySelector('.quiz-bottom-nav'),layout=quiz.querySelector('.quiz-layout');
+    if(!panel||!question||!nav||!layout)return;
     ensureQuizNavStyle();
-    nav.classList.add('quiz-top-nav');
-    if(nav.parentElement!==panel||nav.nextElementSibling!==question)panel.insertBefore(nav,question);
+    if(window.matchMedia('(max-width:720px)').matches){
+      nav.classList.remove('quiz-top-nav');
+      if(nav.parentElement!==quiz||layout.nextElementSibling!==nav)layout.after(nav);
+    }else{
+      nav.classList.add('quiz-top-nav');
+      if(nav.parentElement!==panel||nav.nextElementSibling!==question)panel.insertBefore(nav,question);
+    }
     const prev=document.getElementById('prevBtn'),skip=document.getElementById('skipBtn'),next=document.getElementById('nextBtn');
     if(prev)prev.textContent='← Kembali';
     if(skip)skip.textContent='Lewati';
@@ -100,5 +105,6 @@
   });
   document.addEventListener('gbp:bank-updated',()=>refreshSoon(true));
   document.addEventListener('click',()=>setTimeout(()=>refreshSoon(),0),{passive:true});
+  window.addEventListener('resize',()=>refreshSoon(),{passive:true});
   window.GBPRefreshBankUI=()=>refreshSoon(true);
 })();
