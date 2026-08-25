@@ -1,12 +1,12 @@
 (() => {
-  const bank = window.QUESTION_BANK || [];
-  if (!Array.isArray(bank)) return;
-  bank.forEach(q => {
-    if (Number(q.moduleId) === 25) {
-      q.moduleName = 'BRIDGE Module';
-      q.day = 7;
-      q.category = 'BRIDGE Module';
-    }
-  });
-  window.__GBP_SOURCE_BANK__ = bank.map(q => ({...q, options:Array.isArray(q.options)?[...q.options]:q.options}));
+  const bank=window.QUESTION_BANK||[];
+  if(!Array.isArray(bank))return;
+  for(const q of bank){
+    if(Number(q.moduleId)!==25)continue;
+    q.moduleName='BRIDGE Module Full Version';
+    q.day=7;
+    q.category='BRIDGE Module';
+    q.bridgeFullVersion=true;
+  }
+  window.__GBP_SOURCE_BANK__=bank.map(q=>({...q,options:Array.isArray(q.options)?[...q.options]:q.options}));
 })();
