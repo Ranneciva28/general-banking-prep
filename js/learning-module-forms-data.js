@@ -1,5 +1,5 @@
 (() => {
-  const V='2026.08.25.1825-learning-legal-v42';
+  const V='2026.08.25.1918-learning-trade-lc-v43';
   const load=src=>new Promise((resolve,reject)=>{
     const existing=[...document.scripts].find(s=>s.src&&s.src.includes(src.split('?')[0]));
     if(existing){
@@ -36,13 +36,15 @@
       if(ex.note)module.expertNote=ex.note;
       if(dp.sources)module.sources={...(module.sources||{}),...dp.sources};
     }
-    window.__GBP_LEARNING_FORMS_RUNTIME__='V42-suite';
+    window.__GBP_LEARNING_FORMS_RUNTIME__='V43-suite';
     window.__GBP_LEARNING_LEGAL_RUNTIME__='V42-legal-2025';
+    window.__GBP_LEARNING_TRADE_RUNTIME__='V43-lc-types';
     document.dispatchEvent(new CustomEvent('gbp:learning-suite-ready'));
   }
   (async()=>{
     await load(`js/learning-module-forms-data-v41.js?v=${V}`);
     await load(`js/learning-module-legal-2025-data.js?v=${V}`);
+    await load(`js/learning-module-trade-lc-data.js?v=${V}`);
     sync();
   })().catch(err=>console.error('[GBP Learning Suite]',err));
 })();
