@@ -7,7 +7,7 @@
   const shuffle=(a,seed)=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=hash(`${seed}:${i}`)%(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
 
   const conceptStop=new Set(`yang dan atau untuk pada dalam dengan dari ke di ini itu tersebut sebuah suatu seorang adalah ialah merupakan sebagai agar serta paling lebih tepat sesuai apa apakah bagaimana mengapa manakah konsep kondisi konteks istilah merujuk mengacu dimaksud berarti memiliki menunjukkan menggambarkan mencerminkan menjelaskan peningkatan penurunan meningkat menurun dicatat mencatat sisi akun saldo normal transaksi nilai dokumen dilakukan melakukan terjadi ketika saat bank produk jenis kelompok`.split(' '));
-  const clueStop=new Set(`yang dan atau untuk pada dalam dengan dari ke di ini itu tersebut sebuah suatu seorang adalah ialah merupakan sebagai agar serta paling lebih tepat sesuai bank nasabah transaksi kegiatan proses dapat digunakan menjadi salah satu sesuai materi`.split(' '));
+  const clueStop=new Set(`yang dan atau untuk pada dalam dengan dari ke di ini itu tersebut sebuah suatu seorang adalah ialah merupakan sebagai agar serta paling lebih tepat sesuai bank nasabah transaksi kegiatan proses dapat digunakan menjadi salah satu materi`.split(' '));
   function tokens(s){return norm(s).split(' ').filter(t=>t.length>2&&!clueStop.has(t));}
   function jaccard(a,b){const A=new Set(a),B=new Set(b);if(!A.size||!B.size)return 0;let n=0;for(const x of A)if(B.has(x))n++;return n/(A.size+B.size-n);}
   function conceptFingerprint(term,clue){
@@ -26,14 +26,14 @@
   function statement(raw){const s=stripTail(raw);return s?`${upperFirst(s)}.`:'';}
 
   const genericTails=[
-    {family:'identify',text:'Konsep yang paling sesuai adalah?'},
-    {family:'practice',text:'Hal ini merupakan penerapan apa?'},
-    {family:'aspect',text:'Aspek yang sedang diterapkan adalah?'},
-    {family:'recognize',text:'Situasi tersebut paling tepat menggambarkan apa?'},
-    {family:'term',text:'Istilah yang sesuai untuk kondisi tersebut adalah?'},
-    {family:'principle',text:'Prinsip yang terlihat dari situasi tersebut adalah?'},
-    {family:'classification',text:'Hal tersebut termasuk dalam kategori apa?'},
-    {family:'purpose',text:'Konsep apa yang paling menjelaskan praktik tersebut?'}
+    {family:'identify',text:'Konsep operasional yang dijelaskan adalah?'},
+    {family:'practice',text:'Praktik tersebut merupakan penerapan dari?'},
+    {family:'aspect',text:'Aspek yang diuji pada situasi tersebut adalah?'},
+    {family:'recognize',text:'Situasi tersebut menggambarkan konsep apa?'},
+    {family:'term',text:'Istilah yang digunakan untuk kondisi tersebut adalah?'},
+    {family:'principle',text:'Prinsip yang diterapkan pada situasi tersebut adalah?'},
+    {family:'classification',text:'Kondisi tersebut masuk ke kategori apa?'},
+    {family:'purpose',text:'Tujuan operasional yang dijelaskan berkaitan dengan apa?'}
   ];
 
   function clueKind(raw){
@@ -42,8 +42,19 @@
     if(/^(petugas|bank|nasabah|debitur|perusahaan|unit|penyelenggara|peserta|eksportir|importir|kontraktor)\b/.test(s))return'scenario';
     if(/\b(?:wajib|harus|tidak boleh|perlu|memastikan|memeriksa|memverifikasi|mencatat|menyimpan|menjaga)\b/.test(s))return'control';
     if(/\b(?:digunakan untuk|berfungsi untuk|bertujuan|agar|untuk membantu|untuk memastikan)\b/.test(s))return'purpose';
-    if(/\b(?:sebelum|setelah|kemudian|tahap|langkah|proses)\b/.test(s))return'process';
+    if(/\b(?:sebelum|setelah|kemudian|tahap|langkah|proses|alur)\b/.test(s))return'process';
     return'concept';
+  }
+
+  function processQuestion(raw,seed){
+    const s=stripTail(raw);
+    if(/^tahap\b/i.test(s))return{family:'process-name',question:`${upperFirst(s)} merupakan proses yang dinamakan?`};
+    const forms=[
+      {family:'process-name',question:`${upperFirst(s)}. Tahap tersebut merupakan proses yang dinamakan?`},
+      {family:'process-stage',question:`Dalam alur proses, ${lowerFirst(s)}. Nama tahap ini adalah?`},
+      {family:'process-sequence',question:`${upperFirst(s)}. Tahap proses yang terjadi pada kondisi tersebut disebut?`}
+    ];
+    return forms[(seed>>>6)%forms.length];
   }
 
   function naturalQuestion(term,clue,mid,index){
@@ -67,45 +78,37 @@
     m=raw.match(/^Risiko (?:akibat|karena|yang)\s+(.+)$/i);if(m)return{question:`Risiko akibat ${lowerFirst(m[1])} disebut apa?`,family:'direct-risk'};
     m=raw.match(/^Simpanan yang\s+(.+)$/i);if(m)return{question:`Simpanan yang ${lowerFirst(m[1])} disebut apa?`,family:'direct-funding'};
 
-    const variants=genericTails;
-    const pick=variants[seed%variants.length];
+    const variants=genericTails,pick=variants[seed%variants.length];
+    if(kind==='process')return processQuestion(raw,seed);
     if(kind==='scenario'){
       const scenarioForms=[
         {family:'scenario-action',question:`${lead} ${pick.text}`},
         {family:'scenario-context',question:`Dalam praktik perbankan, ${lowerFirst(raw)}. ${variants[(seed+3)%variants.length].text}`},
-        {family:'scenario-read',question:`Perhatikan situasi ini: ${lowerFirst(raw)}. ${variants[(seed+5)%variants.length].text}`}
+        {family:'scenario-read',question:`Perhatikan situasi berikut: ${lowerFirst(raw)}. ${variants[(seed+5)%variants.length].text}`}
       ];
       return scenarioForms[(seed>>>3)%scenarioForms.length];
     }
     if(kind==='control'){
       const forms=[
         {family:'control-why',question:`${lead} Kontrol atau prinsip yang diterapkan adalah?`},
-        {family:'control-aspect',question:`${lead} Aspek pengendalian yang paling terkait adalah?`},
-        {family:'control-practice',question:`Dalam proses tersebut, ${lowerFirst(raw)}. Praktik ini menunjukkan apa?`}
+        {family:'control-aspect',question:`${lead} Aspek pengendalian yang diuji adalah?`},
+        {family:'control-practice',question:`Dalam proses tersebut, ${lowerFirst(raw)}. Praktik pengendalian yang diterapkan adalah?`}
       ];
       return forms[(seed>>>4)%forms.length];
     }
     if(kind==='purpose'){
       const forms=[
-        {family:'purpose-direct',question:`${lead} Tujuan utamanya berkaitan dengan apa?`},
+        {family:'purpose-direct',question:`${lead} Tujuan utamanya adalah?`},
         {family:'purpose-concept',question:`${lead} Konsep yang mendasari tujuan tersebut adalah?`},
-        {family:'purpose-use',question:`Dalam praktiknya, ${lowerFirst(raw)}. Hal ini digunakan untuk tujuan apa?`}
+        {family:'purpose-use',question:`Dalam praktiknya, ${lowerFirst(raw)}. Tujuan tindakan tersebut adalah?`}
       ];
       return forms[(seed>>>5)%forms.length];
     }
-    if(kind==='process'){
-      const forms=[
-        {family:'process-stage',question:`${lead} Tahap atau prinsip yang dimaksud adalah?`},
-        {family:'process-read',question:`${lead} Bagian proses yang sedang dijelaskan adalah?`},
-        {family:'process-context',question:`Dalam alur proses, ${lowerFirst(raw)}. Hal ini paling terkait dengan apa?`}
-      ];
-      return forms[(seed>>>6)%forms.length];
-    }
     if(kind==='noun'){
       const nounForms=[
-        {family:'noun-identify',question:`${lead} Yang dimaksud adalah?`},
-        {family:'noun-use',question:`${lead} Bentuk yang paling sesuai adalah?`},
-        {family:'noun-classify',question:`${lead} Ini termasuk apa?`}
+        {family:'noun-identify',question:`${lead} Istilah yang dimaksud adalah?`},
+        {family:'noun-use',question:`${lead} Jenis yang sesuai dengan karakteristik tersebut adalah?`},
+        {family:'noun-classify',question:`${lead} Bentuk layanan atau instrumen tersebut disebut?`}
       ];
       return nounForms[(seed>>>7)%nounForms.length];
     }
@@ -113,7 +116,7 @@
   }
 
   function familyKey(term,clue){
-    const t=norm(term),c=norm(clue);
+    const t=norm(term),c=norm(clue),all=`${t} ${c}`;
     if(/^kbmi\s+\d/.test(t))return'kbmi';
     if(/^agent of\s+/.test(t))return'agent-of';
     if(/^fx\s+/.test(t))return'fx-product';
@@ -124,7 +127,12 @@
     if(/^arus kas\s+/.test(t))return'arus-kas';
     if(['character','capacity','capital','collateral','condition'].includes(t))return'5c';
     if(['aset','liabilitas','ekuitas','pendapatan','beban'].includes(t))return'accounting-element';
-    if(/\bratio\b|\brasio\b|margin|return on assets|debt to equity/.test(`${t} ${c}`))return'ratio';
+    if(['transparansi','akuntabilitas','pelindungan konsumen'].includes(t))return'service-principle';
+    if(['cif','kyc','verifikasi identitas','kelengkapan dokumen','akurasi input sistem','otorisasi pejabat'].includes(t))return'onboarding-control';
+    if(['dhn','cek kosong','bilyet giro kosong'].includes(t)||/cek.*bg.*kosong|daftar hitam nasional/.test(all))return'giro-sanction';
+    if(/^penutupan\b/.test(t)||/rekening .*ditutup|menutup rekening|permohonan penutupan|pencairan deposito/.test(c))return'account-closure';
+    if(/^pembukaan rekening\b/.test(t)||/membuka rekening|rekening .*dibuka/.test(c))return'account-opening';
+    if(/\bratio\b|\brasio\b|margin|return on assets|debt to equity/.test(all))return'ratio';
     if(/unsur analisis kredit/.test(c))return'5c';
     if(/pesan swift|swift code|kode .*swift/.test(c))return'swift-message';
     if(/bank garansi/.test(c)&&/(bond|guarantee|garansi)/.test(t))return'bank-guarantee';
@@ -147,9 +155,26 @@
     score+=(hash(`${seed}|${candidate.term}`)%1000)/100000;
     return score;
   }
-  function pickDistractors(catalog,index,seed){
-    const base=catalog[index];
-    return catalog.filter((_,i)=>i!==index).map(x=>({term:x.term,score:distractorScore(base,x,seed)})).sort((a,b)=>b.score-a.score||a.term.localeCompare(b.term,'id')).slice(0,3).map(x=>x.term);
+  const optionSetKey=values=>(values||[]).map(norm).filter(Boolean).sort().join('|');
+  function pickDistractors(catalog,index,seed,usedSets){
+    const base=catalog[index],bf=familyKey(base.term,base.clue);
+    const ranked=catalog.filter((_,i)=>i!==index).map(x=>({term:x.term,family:familyKey(x.term,x.clue),score:distractorScore(base,x,seed)})).sort((a,b)=>b.score-a.score||a.term.localeCompare(b.term,'id'));
+    const same=ranked.filter(x=>bf&&x.family===bf);
+    const preferred=same.length>=3?same.slice(0,6):[];
+    const fallback=ranked.filter(x=>!preferred.some(p=>norm(p.term)===norm(x.term))).slice(0,6);
+    const pool=[...preferred,...fallback].slice(0,10);
+    const combos=[];
+    for(let a=0;a<pool.length-2;a++)for(let b=a+1;b<pool.length-1;b++)for(let c=b+1;c<pool.length;c++){
+      const trio=[pool[a],pool[b],pool[c]],sameCount=trio.filter(x=>bf&&x.family===bf).length;
+      if(same.length>=3&&sameCount<2)continue;
+      const score=trio.reduce((n,x)=>n+x.score,0)+sameCount*22+(hash(`${seed}|${trio.map(x=>x.term).join('|')}`)%1000)/100000;
+      combos.push({trio,score,key:optionSetKey([base.term,...trio.map(x=>x.term)])});
+    }
+    combos.sort((a,b)=>b.score-a.score);
+    const fresh=combos.find(x=>!usedSets?.has(x.key));
+    if(fresh)return fresh.trio.map(x=>x.term);
+    const best=combos[0];if(best)return best.trio.map(x=>x.term);
+    return ranked.slice(0,3).map(x=>x.term);
   }
 
   function add(data,sourceMap={}){
@@ -157,14 +182,15 @@
       const mid=Number(midRaw),items=(itemsRaw||[]).filter(x=>Array.isArray(x)&&clean(x[0])&&clean(x[1]));
       if(!mid||!items.length)continue;
       const meta=bank.find(q=>Number(q.moduleId)===mid);if(!meta)continue;
-      const existingIds=new Set(bank.filter(q=>Number(q.moduleId)===mid).map(q=>String(q.id)));
+      const existing=bank.filter(q=>Number(q.moduleId)===mid),existingIds=new Set(existing.map(q=>String(q.id))),usedOptionSets=new Set(existing.map(q=>optionSetKey(q.options)).filter(Boolean));
       const catalog=items.map(item=>({term:clean(item[0]),clue:clean(item[1]),customQ:clean(item[2]||''),customExp:clean(item[3]||'')}));
       catalog.forEach((entry,i)=>{
         const {term,clue,customQ,customExp}=entry,id=`MAT-M${String(mid).padStart(2,'0')}-${String(i+1).padStart(3,'0')}`;
         if(existingIds.has(id))return;
-        const distractors=pickDistractors(catalog,i,`${mid}:${i}:d`);if(distractors.length<3)return;
-        const options=shuffle([term,...distractors],`${mid}:${i}:o`),wording=customQ?{question:customQ,family:'custom'}:naturalQuestion(term,clue,mid,i);
-        bank.push({id,day:Number(meta.day)||1,moduleId:mid,moduleName:meta.moduleName,question:wording.question,options,answer:term,explanation:customExp||`${term}: ${clue}.`,source:sourceMap[mid]||`Materi General Banking · ${meta.moduleName}`,difficulty:'Challenge',skill:i%4===0?'Analisis Kasus':'Konsep',generated:false,materialGrounded:true,rootQuestionId:id,baseId:id,conceptSignature:conceptFingerprint(term,clue),distractorVersion:'same-family-v1',wordingVersion:'natural-v3-global',wordingFamily:wording.family});
+        const distractors=pickDistractors(catalog,i,`${mid}:${i}:d`,usedOptionSets);if(distractors.length<3)return;
+        const options=shuffle([term,...distractors],`${mid}:${i}:o`),setKey=optionSetKey(options),wording=customQ?{question:customQ,family:'custom'}:naturalQuestion(term,clue,mid,i);
+        usedOptionSets.add(setKey);
+        bank.push({id,day:Number(meta.day)||1,moduleId:mid,moduleName:meta.moduleName,question:wording.question,options,answer:term,explanation:customExp||`${term}: ${clue}.`,source:sourceMap[mid]||`Materi General Banking · ${meta.moduleName}`,difficulty:'Challenge',skill:i%4===0?'Analisis Kasus':'Konsep',generated:false,materialGrounded:true,rootQuestionId:id,baseId:id,conceptSignature:conceptFingerprint(term,clue),distractorVersion:'same-family-v2-unique-set',optionSetSignature:setKey,wordingVersion:'natural-v4-explicit',wordingFamily:wording.family});
       });
     }
     window.__GBP_SOURCE_BANK__=bank.map(q=>({...q,options:Array.isArray(q.options)?[...q.options]:q.options}));
