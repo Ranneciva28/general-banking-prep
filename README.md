@@ -1,4 +1,4 @@
-# General Banking Prep — V3 Hard Edition
+# General Banking Prep — Learning Module Edition
 
 Static quiz web app untuk persiapan **General Banking Program Day 1–5**. Dibuat untuk GitHub Pages tanpa backend, npm, atau build step.
 
@@ -24,6 +24,9 @@ Static quiz web app untuk persiapan **General Banking Program Day 1–5**. Dibua
 ## Fitur
 
 - Dashboard 5-Day dengan tab per hari
+- Learning Module berisi 10 unit kompetensi sertifikasi General Banking Level 4
+- Halaman detail per unit: glossary, checklist penguasaan, titik kritis, prediksi pertanyaan, dan sumber halaman PDF
+- Pencarian materi lintas unit kompetensi
 - Practice Mode dan Exam Mode
 - Hard-biased Quick Drill 10 soal
 - Weakness Drill berdasarkan soal yang pernah salah
@@ -39,13 +42,16 @@ Static quiz web app untuk persiapan **General Banking Program Day 1–5**. Dibua
 
 ## Update website GitHub Pages yang sudah live
 
-Replace isi repository dengan file/folder dari paket V3 ini, lalu commit ke branch yang dipakai GitHub Pages:
+Replace isi repository dengan file/folder dari paket ini, lalu commit ke branch yang dipakai GitHub Pages. Untuk update Learning Module, file baru utamanya adalah:
 
 ```text
 index.html
 css/style.css
+css/learning-module.css
 js/questions.js
 js/app.js
+js/learning-module.js
+version.json
 README.md
 ```
 
@@ -57,8 +63,10 @@ GitHub Pages akan melakukan deploy ulang setelah commit.
 index.html
 css/
   style.css
+  learning-module.css
 js/
   app.js
   questions.js
+  learning-module.js
 README.md
 ```

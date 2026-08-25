@@ -11,7 +11,7 @@
   <title>General Banking Prep</title>
   <script>
     (()=>{
-      const BUILD='2026.08.25.1304-manual-nav-gold-v33';
+      const BUILD='2026.08.25.1500-learning-module-v34';
       const KEY='gbpForcedCacheBuild';
       const REFRESH_PARAM='_gbp_build';
       const clearRuntime=async()=>{
@@ -55,8 +55,9 @@
       })();
     })();
   </script>
-  <link rel="stylesheet" href="css/style.css?v=2026.08.25.1304-manual-nav-gold-v33" />
-  <link rel="stylesheet" href="css/v5.css?v=2026.08.25.1304-manual-nav-gold-v33" />
+  <link rel="stylesheet" href="css/style.css?v=2026.08.25.1500-learning-module-v34" />
+  <link rel="stylesheet" href="css/v5.css?v=2026.08.25.1500-learning-module-v34" />
+  <link rel="stylesheet" href="css/learning-module.css?v=2026.08.25.1500-learning-module-v34" />
   <link rel="preload" href="js/questions.js?v=2026.08.25.1304-manual-nav-gold-v33" as="script" />
 </head>
 <body>
@@ -72,6 +73,7 @@
       <nav class="nav-list" aria-label="Navigasi utama">
         <button class="nav-item active" data-view="dashboardView"><span class="nav-icon">⌂</span><span>Dashboard</span></button>
         <button class="nav-item" data-view="quizSetupView"><span class="nav-icon">?</span><span>Quiz</span></button>
+        <button class="nav-item" data-view="learningModuleView"><span class="nav-icon">◫</span><span>Learning Module</span></button>
         <button class="nav-item" data-view="reviewView"><span class="nav-icon">▤</span><span>Review</span></button>
         <button class="nav-item" data-view="bookmarksView"><span class="nav-icon">♧</span><span>Bookmarks</span></button>
         <button class="nav-item" data-view="statisticsView"><span class="nav-icon">▥</span><span>Statistik</span></button>
@@ -246,6 +248,11 @@
           <section class="section-block"><div class="section-title-row compact"><h2>Rekomendasi Belajar Berikutnya</h2></div><div class="recommendations"><button class="recommend blue" id="retryWrongBtn"><span>↻</span><div><strong>Ulangi Soal Salah</strong><small>Perkuat konsep yang belum tepat di sesi ini.</small></div><b>→</b></button><button class="recommend orange" id="resultWeaknessBtn"><span>◎</span><div><strong>Weakness Drill</strong><small>Latihan dari akumulasi soal yang sering salah.</small></div><b>→</b></button><button class="recommend green" id="backHomeBtn"><span>⚑</span><div><strong>Kembali ke Dashboard</strong><small>Lihat progress dan pilih sesi berikutnya.</small></div><b>→</b></button></div></section>
         </section>
 
+        <!-- LEARNING MODULE -->
+        <section id="learningModuleView" class="view">
+          <div id="learningModuleRoot"></div>
+        </section>
+
         <!-- REVIEW -->
         <section id="reviewView" class="view">
           <div class="page-heading"><div><span class="eyebrow">Review</span><h1>Riwayat & Jawaban</h1><p>Pelajari kembali soal dari sesi terakhir dan riwayat latihan.</p></div></div>
@@ -301,5 +308,6 @@
   <script defer src="js/app.js?v=2026.08.25.1304-manual-nav-gold-v33"></script>
   <script defer src="js/v10-usage-watch.js?v=2026.08.25.1304-manual-nav-gold-v33"></script>
   <script defer src="js/nupmk-ui.js?v=2026.08.25.1304-manual-nav-gold-v33"></script>
+  <script defer src="js/learning-module.js?v=2026.08.25.1500-learning-module-v34"></script>
 </body>
 </html>
