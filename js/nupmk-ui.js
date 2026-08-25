@@ -80,6 +80,44 @@
   function lowerSentenceStart(text){const s=clean(text);if(!s)return s;if(/^[A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ]/u.test(s))return s.charAt(0).toLocaleLowerCase('id-ID')+s.slice(1);return s;}
   function applyExamQuestionContext(){const mode=document.getElementById('quizModeTitle')?.textContent?.trim();if(mode!=='Exam Mode')return;const qEl=document.getElementById('questionText'),tag=document.getElementById('moduleTag');if(!qEl||!tag)return;const original=clean(qEl.textContent),moduleName=clean(tag.textContent);if(!original||!moduleName)return;const prefix=examContextFor(moduleName);if(original.toLocaleLowerCase('id-ID').startsWith(prefix.toLocaleLowerCase('id-ID')))return;qEl.textContent=`${prefix}, ${lowerSentenceStart(original)}`;qEl.dataset.examContext='1';}
 
+  function syncLearningFormAtlas(){
+    const runtime=window.GBPLearningModules?.modules;
+    if(!Array.isArray(runtime))return;
+    const expert=window.GBPLearningExpert||{},deep=window.GBPLearningDeep||{};
+    const formChapterTitles=new Set([
+      'Atlas formulir pembukaan, fasilitas, dan penutupan rekening',
+      'Decision map: form mana dipakai kapan?',
+      'Kamus formulir operasional',
+      'Decision map: transaksi nasabah vs pergeseran kas internal',
+      'Formulir operasional sebagai record dan audit trail',
+      'Form pembukaan dan penutupan sebagai bukti hubungan hukum'
+    ]);
+    for(const module of runtime){
+      const ex=expert[module.code]||{},dp=deep[module.code]||{};
+      const injected=(ex.chapters||[]).filter(ch=>formChapterTitles.has(ch?.title));
+      if(injected.length){
+        module.expert=[...injected,...(module.expert||[]).filter(ch=>!formChapterTitles.has(ch?.title))];
+      }
+      const glos=new Set((module.glossary||[]).map(r=>clean(r?.[0]).toLowerCase()));
+      module.glossary||=[];
+      for(const row of ex.glossary||[]){const key=clean(row?.[0]).toLowerCase();if(key&&!glos.has(key)){module.glossary.push(row);glos.add(key);}}
+      const crit=new Set((module.critical||[]).map(r=>clean(r?.[0]).toLowerCase()));
+      module.critical||=[];
+      for(const row of dp.critical||[]){const key=clean(row?.[0]).toLowerCase();if(key&&!crit.has(key)){module.critical.push(row);crit.add(key);}}
+      if(ex.note)module.expertNote=ex.note;
+    }
+    window.__GBP_LEARNING_FORMS_RUNTIME__='V41-form-atlas';
+  }
+
+  function loadLearningFormAtlas(){
+    if(document.querySelector('script[data-gbp-learning-forms]'))return;
+    const s=document.createElement('script');
+    s.src='js/learning-module-forms-data.js?v=2026.08.25.1755-learning-forms-v41';
+    s.dataset.gbpLearningForms='1';
+    s.onload=()=>{syncLearningFormAtlas();document.dispatchEvent(new CustomEvent('gbp:learning-forms-ready'));};
+    document.head.appendChild(s);
+  }
+
   document.addEventListener('DOMContentLoaded',()=>{
     ensureTabs();labelQuiz();applyExamQuestionContext();
     const tabs=document.getElementById('dayTabs');if(tabs)new MutationObserver(()=>ensureTabs()).observe(tabs,{childList:true});
@@ -89,5 +127,6 @@
     document.addEventListener('click',e=>{if(e.target.closest('[data-view="dashboardView"]'))setTimeout(()=>{ensureTabs();const active=sessionStorage.getItem(ACTIVE_KEY);if(active)renderCategory(active)},80)},{passive:true});
   });
   document.addEventListener('gbp:bank-updated',e=>{const active=sessionStorage.getItem(ACTIVE_KEY);if(active)setTimeout(()=>renderCategory(active),0);});
+  if(document.readyState==='complete')loadLearningFormAtlas();else window.addEventListener('load',loadLearningFormAtlas,{once:true});
   window.GBPExamContext={contextFor:examContextFor,apply:applyExamQuestionContext};
 })();
